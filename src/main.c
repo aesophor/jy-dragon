@@ -434,6 +434,17 @@ int main(int argc, char **argv) {
             "Byte.setstr(d, 4, 10, 'hello')\n"
             "check('setstr/getstr', Byte.getstr(d, 4, 10) == 'hello')\n"
             "check('setstr pads with NUL', Byte.get16(d, 14) == 0)\n"
+            /* 5. lua_tonumber coercion: a numeric string converts, anything
+             * else stores 0 without raising. jymain.lua:592 assigns a talent
+             * NAME to the 16-bit 天赋 field and the original quietly writes 0
+             * there, so an error here aborts NewGame. */
+            "Byte.set16(d, 0, '7')\n"
+            "check('set16 coerces a numeric string', Byte.get16(d, 0) == 7)\n"
+            "Byte.set16(d, 0, 'not a number')\n"
+            "check('set16 stores 0 for a non-numeric string', Byte.get16(d, 0) == 0)\n"
+            "Byte.set16(d, 0, 5)\n"
+            "Byte.set16(d, 0, nil)\n"
+            "check('set16 stores 0 for nil', Byte.get16(d, 0) == 0)\n"
             /* 4. SaveSMap round-trip: mutate a cell, save to temp, reload, compare */
             "lib.LoadSMap(CC.S_Filename[0], CC.TempS_Filename, 137, CC.SWidth,\n"
             "             CC.SHeight, CC.D_Filename[0], CC.DNum, 11)\n"

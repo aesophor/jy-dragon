@@ -413,6 +413,42 @@ whatever archive is in pic slot 0, and `smap.grp`'s record 0 carries hotspot
 (record 0 correct), but the outdoor variant at `jywar.lua:18903` loads `smap`,
 where the original misplaces its markers too.
 
+### `Byte`'s numeric arguments (recovered, verified)
+
+Every numeric argument to the `Byte` functions goes through the **raw
+`lua_tonumber`**, not `luaL_checknumber`. `sub_403300` (`set16`/`setu16`) is
+the whole story:
+
+    lua_touserdata(L, 1)     ; buffer
+    lua_tonumber(L, 2)       ; offset
+    lua_tonumber(L, 3)       ; value
+    *(WORD *)(buf + off) = value
+
+`sub_403490` (`setstr`) is the same, with `lua_tolstring` for the string.
+`lua_tonumber` coerces a numeric string and returns **0** for anything else,
+without raising.
+
+The mod depends on that quiet zero. `CC.Person_S.天赋` is declared 16-bit
+(`{10, 0, 2}` -- offset 10, type 0) but `jymain.lua:592` assigns it a talent
+*name*:
+
+    JY.Person[0].天赋 = ZJTF[JY.Base.主角职业]     -- "灵犀真拳", ...
+
+so the original stores 0 and the UI reads the name out of `ZJTF` directly
+instead (`jymain.lua:2557`). Checking the argument here raised
+`bad argument #3 to 'set16' (number expected, got string)` and aborted
+`NewGame` on the last line of the character-creation chain.
+
+This port coerces the same way but **logs** it (capped at 20 messages) so the
+sites stay visible instead of becoming invisible zeroes. A static sweep of
+`script/` finds exactly one, the site above; `JY_TEST_SAVE=1` asserts the
+three cases (numeric string, non-numeric string, `nil`).
+
+Two deliberate deviations, both strictly narrower than a crash: `setstr`
+keeps `luaL_checklstring` for the string, because the original passes
+`lua_tolstring`'s `NULL` straight to `strlen`; and the offsets stay
+bounds-checked, since the original would just scribble outside the buffer.
+
 ### `FillColor`'s zero rect (recovered, verified)
 
 `lib.FillColor(x1, y1, x2, y2, colour)` treats **all four coordinates zero**

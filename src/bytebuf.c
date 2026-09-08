@@ -30,6 +30,43 @@ static uint8_t *at(lua_State *L, ByteBuf *b, lua_Integer off, size_t need) {
     return b->p + off;
 }
 
+/* Every numeric argument goes through the raw lua_tonumber in the original,
+ * never luaL_checknumber: sub_403300 (set16/setu16) and sub_403490 (setstr)
+ * both call lua_tonumber and use the result unchecked. lua_tonumber coerces a
+ * numeric string and returns 0 for everything else -- without raising.
+ *
+ * The mod depends on that quiet zero. CC.Person_S.天赋 is declared as a
+ * 16-bit field (offset 10, type 0) but jymain.lua:592 assigns it a talent
+ * NAME out of ZJTF, so the original stores 0 and the UI reads the name from
+ * ZJTF directly instead (jymain.lua:2557). Raising an error instead aborted
+ * NewGame at the very end of the character-creation chain.
+ *
+ * The coercion is logged, capped, so these sites stay visible rather than
+ * turning into silent zeroes nobody ever sees.
+ */
+#define COERCE_WARN_MAX 20
+static int g_coerce_warns;
+
+static lua_Number numarg(lua_State *L, int idx, const char *fn) {
+    /* lua_isnumber is true for numeric strings too, so "7" does not warn. */
+    if (lua_isnumber(L, idx)) return lua_tonumber(L, idx);
+    if (g_coerce_warns < COERCE_WARN_MAX) {
+        g_coerce_warns++;
+        jy_log("Byte.%s: arg %d is a %s, not a number -- stored 0, as the original "
+               "does%s",
+               fn, idx, luaL_typename(L, idx),
+               g_coerce_warns == COERCE_WARN_MAX ? " [further warnings suppressed]" : "");
+    }
+    return 0;
+}
+
+/* _ftol2_sse yields the x86 "integer indefinite" value for NaN and for
+ * anything outside the range; guarding here keeps the cast out of UB. */
+static int32_t to_i32(lua_Number n) {
+    if (!(n >= -2147483648.0 && n <= 2147483647.0)) return INT32_MIN;
+    return (int32_t)n;
+}
+
 static int l_create(lua_State *L) {
     lua_Integer n = luaL_checkinteger(L, 1);
     if (n < 0) n = 0;
@@ -93,36 +130,36 @@ static int l_savefile(lua_State *L) {
     return 1;
 }
 
-#define GETTER(name, ctype, luapush)                                                     \
+#define GETTER(name, ctype, luapush, fname)                                              \
     static int name(lua_State *L) {                                                      \
         ByteBuf    *b = check_buf(L, 1);                                                 \
-        lua_Integer o = luaL_checkinteger(L, 2);                                         \
+        lua_Integer o = to_i32(numarg(L, 2, fname));                                     \
         ctype       v;                                                                   \
         memcpy(&v, at(L, b, o, sizeof(ctype)), sizeof(ctype));                           \
         luapush(L, (lua_Number)v);                                                       \
         return 1;                                                                        \
     }
-#define SETTER(name, ctype)                                                              \
+#define SETTER(name, ctype, fname)                                                       \
     static int name(lua_State *L) {                                                      \
         ByteBuf    *b = check_buf(L, 1);                                                 \
-        lua_Integer o = luaL_checkinteger(L, 2);                                         \
-        ctype       v = (ctype)luaL_checkinteger(L, 3);                                  \
+        lua_Integer o = to_i32(numarg(L, 2, fname));                                     \
+        ctype       v = (ctype)to_i32(numarg(L, 3, fname));                              \
         memcpy(at(L, b, o, sizeof(ctype)), &v, sizeof(ctype));                           \
         return 0;                                                                        \
     }
 
-GETTER(l_get16, int16_t, lua_pushnumber)
-GETTER(l_getu16, uint16_t, lua_pushnumber)
-GETTER(l_get32, int32_t, lua_pushnumber)
-SETTER(l_set16, int16_t)
-SETTER(l_setu16, uint16_t)
-SETTER(l_set32, int32_t)
+GETTER(l_get16, int16_t, lua_pushnumber, "get16")
+GETTER(l_getu16, uint16_t, lua_pushnumber, "getu16")
+GETTER(l_get32, int32_t, lua_pushnumber, "get32")
+SETTER(l_set16, int16_t, "set16")
+SETTER(l_setu16, uint16_t, "setu16")
+SETTER(l_set32, int32_t, "set32")
 
 /* Byte.getstr(buf, off, len) -> NUL-trimmed raw bytes (still Big5/GBK) */
 static int l_getstr(lua_State *L) {
     ByteBuf    *b = check_buf(L, 1);
-    lua_Integer o = luaL_checkinteger(L, 2);
-    lua_Integer n = luaL_checkinteger(L, 3);
+    lua_Integer o = to_i32(numarg(L, 2, "getstr"));
+    lua_Integer n = to_i32(numarg(L, 3, "getstr"));
     if (n < 0) n = 0;
     const uint8_t *p    = at(L, b, o, (size_t)n);
     size_t         real = 0;
@@ -136,9 +173,12 @@ static int l_getstr(lua_State *L) {
  * (see SetDataFromStruct in jymain.lua). */
 static int l_setstr(lua_State *L) {
     ByteBuf    *b = check_buf(L, 1);
-    lua_Integer o = luaL_checkinteger(L, 2);
-    lua_Integer n = luaL_checkinteger(L, 3);
+    lua_Integer o = to_i32(numarg(L, 2, "setstr"));
+    lua_Integer n = to_i32(numarg(L, 3, "setstr"));
     size_t      sl;
+    /* lua_tolstring in the original, which also coerces a number. It returns
+     * NULL for anything else and the original then walks it -- luaL_checklstring
+     * raises instead, which is the same for every input that is not a crash. */
     const char *s = luaL_checklstring(L, 4, &sl);
     if (n < 0) n = 0;
     uint8_t *dst  = at(L, b, o, (size_t)n);
