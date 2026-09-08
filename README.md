@@ -158,11 +158,11 @@ adopting it did not rewrite the tree wholesale. Four settings matter:
   that correspondence.
 - **`SortIncludes: Never`** -- `engine.h` comes first on purpose.
 
-The reformat was verified by comparing `strings` on the binary before and
-after: nothing but whitespace moved.
-
 `src/s2t_table.h` is fenced with `// clang-format off`, emitted by
 `tools/gen_s2t.py` so a reformat cannot fight the generator.
+
+The reformat was verified by comparing `strings` on the binary before and
+after: all 632 literals identical, so nothing but whitespace moved.
 
 ## Layout
 
@@ -412,6 +412,45 @@ whatever archive is in pic slot 0, and `smap.grp`'s record 0 carries hotspot
 `(0,0)` where every other tile uses `(18,17)`. Battles load `wmap.grp`
 (record 0 correct), but the outdoor variant at `jywar.lua:18903` loads `smap`,
 where the original misplaces its markers too.
+
+### `FillColor`'s zero rect (recovered, verified)
+
+`lib.FillColor(x1, y1, x2, y2, colour)` treats **all four coordinates zero**
+as *the whole clip region*, not a one-pixel rect at the origin. `sub_408690`
+tests the four for zero and, when they are, hands `SDL_FillRect` a `NULL`
+rect, which SDL 1.2 resolves to the surface intersected with its clip rect;
+otherwise it builds `{x1, y1, x2-x1, y2-y1}`.
+
+Both of the scripts' screen-clearing helpers depend on that case -- they set a
+clip and then clear it with the degenerate rect:
+
+    function Cls(x1, y1, x2, y2)                 -- jymain.lua:6365
+      ...
+      lib.SetClip(x1, y1, x2, y2)
+      if JY.Status == GAME_START then
+        lib.FillColor(0, 0, 0, 0, 0)             -- clear the clip region
+
+    function ClsN(x1, y1, x2, y2)                -- jymain.lua:9395
+      lib.SetClip(x1, y1, x2, y2)
+      lib.FillColor(0, 0, 0, 0, 0)
+      lib.SetClip(0, 0, 0, 0)
+
+Filling one pixel instead makes `Cls` and `ClsN` erase nothing, so everything
+drawn while `JY.Status == GAME_START` accumulates. The visible symptom was the
+new-game dialogue chain: `JYMsgBox` opens with `Cls()`, so difficulty ->
+character type -> gender -> name prompt all piled up on top of each other and
+on the title screen behind them.
+
+`SetClip(0, 0, 0, 0)` has the same convention for the same reason
+(`sub_4082B0` passes `SDL_SetClipRect` a `NULL` rect), which this port already
+honoured -- 21 script sites use it to mean "no clipping".
+
+Two smaller findings from the same disassembly, both left alone for now:
+`sub_402070` reads only **five** arguments, so the 6th alpha argument this
+port accepts is an extension (`jyyb.lua:438` and `jymain.lua:5946` pass 128
+and get an opaque fill in the original); and both the fill and the clip rect
+are built **exclusive** of `x2`/`y2`, where this port treats them as
+inclusive.
 
 ### PlayMIDI's ordering (recovered, verified)
 

@@ -167,9 +167,34 @@ static int l_SetClip(lua_State *L) {
     return 0;
 }
 
+/* FillColor(x1, y1, x2, y2, color [, alpha])
+ *
+ * All four coordinates zero means "the whole clip region", NOT a one-pixel
+ * rect at the origin. sub_408690 tests the four for zero and, when they are,
+ * hands SDL_FillRect a NULL rect -- which SDL 1.2 resolves to the whole
+ * surface intersected with its clip rect. Otherwise it builds
+ * {x1, y1, x2-x1, y2-y1} and fills that.
+ *
+ * The scripts depend on the zero case: both Cls() and ClsN() set a clip and
+ * then clear it with FillColor(0, 0, 0, 0, 0) (jymain.lua:6376, 6384, 9404,
+ * plus the initial clear at 125). Without it neither function erases
+ * anything, so every screen drawn while JY.Status == GAME_START accumulates
+ * -- the new-game dialogue chain (JYMsgBox for difficulty, then character
+ * type, then gender...) leaves each box on screen under the next one.
+ *
+ * The 6th alpha argument is this port's extension; sub_402070 reads only
+ * five, so the two sites that pass 128 get an opaque fill in the original.
+ */
 static int l_FillColor(lua_State *L) {
-    jy_fill_rect(argi(L, 1, 0), argi(L, 2, 0), argi(L, 3, 0), argi(L, 4, 0),
-                 (uint32_t)argi(L, 5, 0), argi(L, 6, 255));
+    int x1 = argi(L, 1, 0), y1 = argi(L, 2, 0);
+    int x2 = argi(L, 3, 0), y2 = argi(L, 4, 0);
+    if (x1 == 0 && y1 == 0 && x2 == 0 && y2 == 0) {
+        x1 = g_e.clip.x;
+        y1 = g_e.clip.y;
+        x2 = g_e.clip.x + g_e.clip.w - 1;
+        y2 = g_e.clip.y + g_e.clip.h - 1;
+    }
+    jy_fill_rect(x1, y1, x2, y2, (uint32_t)argi(L, 5, 0), argi(L, 6, 255));
     return 0;
 }
 
