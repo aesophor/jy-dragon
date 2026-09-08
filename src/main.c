@@ -76,6 +76,12 @@ static int l_snap(lua_State *L) {
     return 0;
 }
 
+/* MUSIC(): is a track loaded and looping? (JY_TEST_MUSIC) */
+static int l_music_active(lua_State *L) {
+    lua_pushboolean(L, jy_music_active());
+    return 1;
+}
+
 /* ---- lua error reporting ------------------------------------------------ */
 static int traceback(lua_State *L) {
     const char *msg = lua_tostring(L, 1);
@@ -205,6 +211,8 @@ int main(int argc, char **argv) {
 
     lua_pushcfunction(L, l_snap);
     lua_setglobal(L, "SNAP");
+    lua_pushcfunction(L, l_music_active);
+    lua_setglobal(L, "MUSIC");
 
     jy_set_scripted_keys(getenv("JY_KEYS"));
 
@@ -221,6 +229,30 @@ int main(int argc, char **argv) {
     if (luaL_loadstring(L, JY_COMPAT_LUA) || lua_pcall(L, 0, 0, 0))
         jy_log("compat shim failed: %s", lua_tostring(L, -1));
     else jy_log("compat: read_files patched for Windows text-mode semantics");
+
+    /* JY_TEST_MUSIC replays the battle-victory sequence: switch to a track
+     * that does not exist, which must leave silence rather than the previous
+     * one, then fire the fanfare. */
+    if (getenv("JY_TEST_MUSIC")) {
+        static const char *M =
+            "IncludeFile() SetGlobalConst() SetGlobal()\n"
+            "local function settle() for i = 1, 60 do lib.Delay(10) end end\n"
+            "lib.PlayMIDI('./sound/game11.mp3') settle()\n"
+            "lib.Debug('1. after game11.mp3        playing='..tostring(MUSIC()))\n"
+            "lib.PlayMIDI('./sound/game11.mp3') settle()\n"
+            "lib.Debug('2. same track again       playing='..tostring(MUSIC())..\n"
+            "          '  (no reload line above == not restarted)')\n"
+            "lib.PlayMIDI('./sound/game100.mp3') settle()\n"
+            "lib.Debug('3. missing victory track  playing='..tostring(MUSIC())..\n"
+            "          '  (must be false)')\n"
+            "lib.PlayWAV('./sound/atk41.wav') settle()\n"
+            "lib.Debug('4. fanfare over silence   playing='..tostring(MUSIC()))\n"
+            "lib.PlayMIDI('./sound/game11.mp3') settle()\n"
+            "lib.Debug('5. scene music restored   playing='..tostring(MUSIC()))\n";
+        if (luaL_loadstring(L, M) || lua_pcall(L, 0, 0, 0))
+            jy_log("music test failed: %s", lua_tostring(L, -1));
+        goto done;
+    }
 
     /* JY_TEST_FADE checks ShowSlow's end states and timing. */
     if (getenv("JY_TEST_FADE")) {

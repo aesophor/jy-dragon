@@ -312,6 +312,40 @@ whatever archive is in pic slot 0, and `smap.grp`'s record 0 carries hotspot
 (record 0 correct), but the outdoor variant at `jywar.lua:18903` loads `smap`,
 where the original misplaces its markers too.
 
+### PlayMIDI's ordering (recovered, verified)
+
+`sub_407FD0` does three things worth copying exactly:
+
+1. **Same path in, nothing happens.** It compares the request against the
+   track already playing (`byte_460970`) and returns without touching the
+   stream. `PlayMIDI(JY.Scene[n].进门音乐)` runs on every scene entry, so
+   without this the BGM restarts from the top each time you walk through a
+   door.
+2. **It stops the stream *before* opening the new file** (`sub_408130`, an
+   unconditional `BASS_ChannelStop` + `BASS_StreamFree`). A request for a
+   missing track therefore leaves **silence**, not the previous track.
+3. On a failed open it logs and returns without recording the new path.
+
+Point 2 is load-bearing for battle endings. `jywar.lua` does:
+
+    PlayMIDI(100)        -- game100.mp3 does not ship
+    PlayWavAtk(41)       -- the victory fanfare
+    DrawStrBoxWaitKey("战斗胜利", ...)
+
+so the fanfare is *meant* to play over nothing, and the scene music is
+restored a few lines later. Decoding the new track before stopping the old one
+makes the fanfare play on top of the previous BGM instead. `PlayMIDI(0)` at
+`jywar.lua:18898` is the same trick -- `game00.mp3` does not exist either.
+
+One deliberate deviation: on a failed open this port *clears* its record of
+what is playing, where the original leaves the old path in place. The
+original's behaviour means a later request for that same track is treated as
+"already playing" and silently ignored, leaving the scene mute; clearing it
+lets the retry work.
+
+`JY_TEST_MUSIC=1` replays the whole sequence and prints the stream state at
+each step.
+
 ### Audio
 
 `PlayMIDI` gets an **.mp3** path, not a MIDI file (`CONFIG.MP3 = 1` selects

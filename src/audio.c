@@ -150,11 +150,23 @@ typedef struct {
     int  gen;
 } MusicReq;
 
+/* Mirrors byte_460970 in the original: the track that is currently playing.
+ * PlayMIDI compares against it and returns without touching the stream when
+ * the same file is requested again, so re-entering a scene with the same BGM
+ * does not restart it. Guarded by g_mtx -- the decode thread clears it. */
+static char g_music_path[512];
+
 static int SDLCALL music_worker(void *ud) {
     MusicReq *req = (MusicReq *)ud;
     Clip      c;
     bool      ok = decode_file(req->path, &c);
     if (!ok) {
+        /* The original leaves its path variable holding the *old* track here,
+         * so a later request for that track is silently ignored and the scene
+         * stays quiet. Clear it instead: a retry should be able to play. */
+        SDL_LockMutex(g_mtx);
+        if (SDL_GetAtomicInt(&g_music_gen) == req->gen) g_music_path[0] = '\0';
+        SDL_UnlockMutex(g_mtx);
         jy_log("PlayMIDI: cannot decode %s", req->path);
     } else if (SDL_GetAtomicInt(&g_music_gen) != req->gen) {
         free(c.pcm); /* superseded while decoding */
@@ -171,12 +183,29 @@ static int SDLCALL music_worker(void *ud) {
     return 0;
 }
 
-/* Music: replace whatever is playing and loop it. Decoded off-thread. */
+/* Music: replace whatever is playing and loop it. Decoded off-thread.
+ *
+ * Ported from sub_407FD0, whose ordering matters: it stops the current stream
+ * *before* trying to open the new file, so a request for a missing track
+ * leaves silence rather than the previous track. The scripts rely on that --
+ * battle victory does PlayMIDI(100) then PlayWavAtk(41), and game100.mp3 does
+ * not exist, so the fanfare is meant to play over nothing. */
 void jy_play_music(const char *path) {
     if (!g_ready || !g_music || !path) return;
+
+    SDL_LockMutex(g_mtx);
+    bool same = strcmp(g_music_path, path) == 0;
+    SDL_UnlockMutex(g_mtx);
+    if (same) return;
+
+    jy_stop_music(); /* sub_408130, unconditionally */
+
     MusicReq *req = (MusicReq *)calloc(1, sizeof(MusicReq));
     if (!req) return;
     snprintf(req->path, sizeof(req->path), "%s", path);
+    SDL_LockMutex(g_mtx);
+    snprintf(g_music_path, sizeof(g_music_path), "%s", path);
+    SDL_UnlockMutex(g_mtx);
     req->gen      = SDL_AddAtomicInt(&g_music_gen, 1) + 1;
     SDL_Thread *t = SDL_CreateThread(music_worker, "jy-music", req);
     if (t) SDL_DetachThread(t);
@@ -193,7 +222,13 @@ void jy_stop_music(void) {
     free(g_incoming.pcm);
     memset(&g_incoming, 0, sizeof(g_incoming));
     g_incoming_ready = false;
+    g_music_path[0]  = '\0';
     SDL_UnlockMutex(g_mtx);
+}
+
+/* Is a track loaded and looping? Used by the JY_TEST_MUSIC harness. */
+bool jy_music_active(void) {
+    return g_ready && g_music_clip.pcm != NULL;
 }
 
 /* Called from the engine's idle tick: re-queue the track when it drains. */

@@ -88,6 +88,7 @@ void jy_audio_shutdown(void);
 void jy_audio_update(void);
 void jy_play_music(const char *path);
 void jy_stop_music(void);
+bool jy_music_active(void);
 void jy_play_sound(const char *path);
 
 /* ---- world map ---------------------------------------------------------- */
