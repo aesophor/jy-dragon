@@ -1,0 +1,140 @@
+/* Text rendering.
+ *
+ * The original used SDL_ttf's TTF_RenderUNICODE_* (a FreeType wrapper), fed
+ * UCS-2 that the engine produced from the game's native charset. We do the
+ * same thing directly: iconv to UCS-2, then FreeType to raster.
+ *
+ * Charsets (see _re/data_formats.md): script literals are GBK, data-file text
+ * is Big5. lib.CharSet(s,0) converts Big5 data into GBK, so strings reaching
+ * DrawStr are GBK when CC.SrcCharSet==0 (CONFIG.CharSet 0=简体, 1=繁体).
+ */
+#include "engine.h"
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#include <iconv.h>
+#include <string.h>
+#include <stdlib.h>
+
+static FT_Library g_ft;
+static bool       g_ft_ok;
+
+/* one cached face per (path,size) - the game only uses a couple of sizes */
+#define MAX_FACES 8
+typedef struct {
+    char    path[512];
+    int     size;
+    FT_Face face;
+} FaceSlot;
+static FaceSlot g_faces[MAX_FACES];
+static int      g_nfaces;
+
+bool jy_text_init(void) {
+    if (FT_Init_FreeType(&g_ft)) {
+        jy_log("FreeType init failed");
+        return false;
+    }
+    g_ft_ok = true;
+    return true;
+}
+
+void jy_text_shutdown(void) {
+    for (int i = 0; i < g_nfaces; i++)
+        if (g_faces[i].face) FT_Done_Face(g_faces[i].face);
+    g_nfaces = 0;
+    if (g_ft_ok) FT_Done_FreeType(g_ft);
+    g_ft_ok = false;
+}
+
+static FT_Face get_face(const char *path, int size) {
+    for (int i = 0; i < g_nfaces; i++)
+        if (g_faces[i].size == size && strcmp(g_faces[i].path, path) == 0)
+            return g_faces[i].face;
+    if (g_nfaces >= MAX_FACES) return g_faces[0].face;
+
+    FT_Face f = NULL;
+    if (FT_New_Face(g_ft, path, 0, &f)) {
+        jy_log("DrawStr: cannot open font %s", path);
+        return NULL;
+    }
+    FT_Set_Pixel_Sizes(f, 0, (FT_UInt)size);
+    FaceSlot *s = &g_faces[g_nfaces++];
+    snprintf(s->path, sizeof(s->path), "%s", path);
+    s->size = size;
+    s->face = f;
+    return f;
+}
+
+/* Convert a native-charset string to UCS-2LE. Returns count of code units. */
+static int to_ucs2(const char *s, size_t slen, int src_charset, uint16_t *out,
+                   int outmax) {
+    const char *from = (src_charset == 0) ? "GBK" : "BIG5";
+    iconv_t     cd   = iconv_open("UCS-2LE", from);
+    if (cd == (iconv_t)-1) return 0;
+
+    char  *inbuf   = (char *)s;
+    size_t inleft  = slen;
+    char  *outbuf  = (char *)out;
+    size_t outleft = (size_t)outmax * 2;
+
+    while (inleft && outleft) {
+        if (iconv(cd, &inbuf, &inleft, &outbuf, &outleft) != (size_t)-1) break;
+        /* Skip one undecodable byte and keep going rather than losing the
+         * whole string - mixed-charset data does occur in this game. */
+        inbuf++;
+        inleft--;
+        if (outleft >= 2) {
+            *(uint16_t *)outbuf = '?';
+            outbuf += 2;
+            outleft -= 2;
+        }
+    }
+    iconv_close(cd);
+    return (int)((uint16_t *)outbuf - out);
+}
+
+static void blit_glyph(FT_Bitmap *bm, int px, int py, uint32_t rgb) {
+    uint32_t *dst   = (uint32_t *)g_e.screen->pixels;
+    int       pitch = g_e.screen->pitch / 4;
+    int       cx2   = g_e.clip.x + g_e.clip.w - 1;
+    int       cy2   = g_e.clip.y + g_e.clip.h - 1;
+
+    for (unsigned r = 0; r < bm->rows; r++) {
+        int y = py + (int)r;
+        if (y < g_e.clip.y || y > cy2) continue;
+        for (unsigned c = 0; c < bm->width; c++) {
+            int x = px + (int)c;
+            if (x < g_e.clip.x || x > cx2) continue;
+            int a = bm->buffer[r * (unsigned)bm->pitch + c];
+            if (!a) continue;
+            uint32_t *p = dst + (size_t)y * pitch + x;
+            uint32_t  s = rgb & 0x00FFFFFFu, d = *p;
+            uint32_t rb = (((s & 0x00FF00FFu) * a + (d & 0x00FF00FFu) * (255 - a)) >> 8) &
+                          0x00FF00FFu;
+            uint32_t g  = (((s & 0x0000FF00u) * a + (d & 0x0000FF00u) * (255 - a)) >> 8) &
+                          0x0000FF00u;
+            *p          = 0xFF000000u | rb | g;
+        }
+    }
+}
+
+void jy_draw_string(int x, int y, const char *s, uint32_t rgb, int size, const char *font,
+                    int src_charset) {
+    if (!g_ft_ok || !s || !*s) return;
+    if (size <= 0) size = 16;
+
+    FT_Face face = get_face(font, size);
+    if (!face) return;
+
+    uint16_t buf[1024];
+    int      n = to_ucs2(s, strlen(s), src_charset, buf, 1024);
+
+    int pen = x;
+    for (int i = 0; i < n; i++) {
+        FT_Error fe = FT_Load_Char(face, buf[i], FT_LOAD_RENDER);
+        if (fe) continue;
+        FT_GlyphSlot g = face->glyph;
+        /* y is the top of the line in the game's coordinate space */
+        blit_glyph(&g->bitmap, pen + g->bitmap_left, y + size - g->bitmap_top, rgb);
+        pen += (int)(g->advance.x >> 6);
+    }
+}

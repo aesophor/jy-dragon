@@ -1,0 +1,41 @@
+# Tuned to the style the sources are already written in, so formatting does not
+# rewrite the whole tree and destroy git blame.
+BasedOnStyle: LLVM
+IndentWidth: 4
+
+# The code was written to roughly 80 columns but breaks past it deliberately in
+# a handful of places. 90 keeps those lines as the author left them while still
+# enforcing a bound.
+ColumnLimit: 90
+
+# The comment blocks are hand-wrapped prose documenting recovered engine
+# behaviour. Reflowing them to ColumnLimit would join lines and ruin them.
+ReflowComments: false
+
+# compat.lua.h and the test harnesses in main.c embed Lua as one C literal per
+# Lua line. Splitting a literal to fit ColumnLimit is semantically harmless --
+# adjacent literals concatenate -- but it breaks that correspondence and makes
+# the embedded source unreadable.
+BreakStringLiterals: false
+
+# engine.h is included first on purpose; leave include order alone.
+SortIncludes: Never
+
+# `uint32_t  *offs;` -- type padded, star on the name. Used throughout, both in
+# struct bodies and in runs of local declarations.
+PointerAlignment: Right
+DerivePointerAlignment: false
+AlignConsecutiveDeclarations: Consecutive
+AlignConsecutiveAssignments: Consecutive
+
+# Guard clauses and small dispatch tables are written compactly:
+#   if (!f) { jy_log(...); return false; }
+#   case 3:  return 240;
+AllowShortBlocksOnASingleLine: Always
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortLoopsOnASingleLine: true
+
+# LLVM would collapse `bool f(void) { return x; }` onto one line; the sources
+# keep the body on its own line.
+AllowShortFunctionsOnASingleLine: Empty

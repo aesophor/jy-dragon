@@ -1,0 +1,4 @@
+.DS_Store
+build/
+game/port_debug.txt
+game/save/
