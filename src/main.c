@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "compat.lua.h"
+#include <mach-o/dyld.h>
+#include <limits.h>
 
 /* ---- logging ------------------------------------------------------------ */
 static FILE *g_logf;
@@ -86,6 +88,33 @@ static int traceback(lua_State *L) {
     return 1;
 }
 
+/* Game data next to the executable.
+ *
+ * Inside a .app the process starts with cwd = "/", so probing "./game" finds
+ * nothing. Resolve candidates against the binary's own directory instead:
+ * Contents/MacOS/<exe> -> ../Resources/game inside a bundle, ./game in the
+ * plain build tree.
+ */
+static const char *root_near_exe(char *buf, size_t n) {
+    char     exe[PATH_MAX];
+    uint32_t len = sizeof exe;
+    if (_NSGetExecutablePath(exe, &len) != 0) return NULL;
+    char real[PATH_MAX];
+    if (!realpath(exe, real)) return NULL;
+    char *slash = strrchr(real, '/');
+    if (!slash) return NULL;
+    *slash = '\0';
+
+    static const char *rel[] = {"../Resources/game", "game"};
+    for (size_t i = 0; i < sizeof rel / sizeof rel[0]; i++) {
+        char probe[PATH_MAX];
+        snprintf(buf, n, "%s/%s", real, rel[i]);
+        snprintf(probe, sizeof probe, "%s/CONFIG.lua", buf);
+        if (access(probe, R_OK) == 0) return buf;
+    }
+    return NULL;
+}
+
 static bool run_file(lua_State *L, const char *path) {
     if (luaL_loadfile(L, path)) {
         jy_log("load %s failed: %s", path, lua_tostring(L, -1));
@@ -108,9 +137,11 @@ int main(int argc, char **argv) {
      * directory if it holds CONFIG.lua, else the bundled ./game/. */
     const char *root = (argc > 1) ? argv[1] : NULL;
     if (!root) {
+        static char nearby[PATH_MAX];
         if (access("CONFIG.lua", R_OK) == 0) root = ".";
         else if (access("game/CONFIG.lua", R_OK) == 0) root = "game";
-        else {
+        else if ((root = root_near_exe(nearby, sizeof nearby)) != NULL) {
+        } else {
             fprintf(stderr,
                     "no game data found. Run from a directory containing CONFIG.lua,\n"
                     "or pass the game root:  %s /path/to/game\n",
@@ -161,7 +192,9 @@ int main(int argc, char **argv) {
     if (h <= 0) h = 700;
     jy_log("screen: %dx%d", w, h);
 
-    if (!jy_gfx_init(w, h, "JY - native port")) return 1;
+    if (!jy_gfx_init(w, h,
+                     "金庸群俠傳之龍啟江湖") /* UTF-8; SDL3 window titles are UTF-8 */)
+        return 1;
     jy_text_init();
     jy_audio_init();
 

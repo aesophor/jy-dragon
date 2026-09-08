@@ -73,6 +73,66 @@ Environment variables, for automated runs:
 On exit the engine prints a census of every `lib.*` function the run needed but
 that isn't implemented yet, ordered by call count — that list is the to-do list.
 
+## .app bundle
+
+    make app          # self-contained, ~300 MB -> build/金庸群俠傳之龍啟江湖.app
+    make install-app  # copies it to ~/Applications
+
+The game data goes in `Contents/Resources/game`, so the bundle is
+double-clickable with nothing beside it. Three things had to be dealt with:
+
+**cwd is `/` on a double-click.** Probing `./game/CONFIG.lua` only works from a
+terminal. `root_near_exe()` resolves candidates against the binary's own
+directory via `_NSGetExecutablePath` instead -- `../Resources/game` inside a
+bundle, `game` in the build tree.
+
+**Homebrew dylibs.** Four (`SDL3`, `luajit`, `freetype`, `libpng`; `libiconv`
+and the frameworks are system-provided) are copied into
+`Contents/Frameworks` and rewritten to `@rpath`. `tools/make_app.sh` walks the
+dependency graph rather than hardcoding that list -- freetype pulls in libpng,
+and a future dependency should not need the script edited.
+
+It also **deletes the `/opt/homebrew/lib` rpath** that pkg-config puts on the
+link line. Rpaths are searched in order, so leaving it in means dyld keeps
+preferring Homebrew's copies: the bundling would silently do nothing on the
+machine that built it, which is the one place you would never notice.
+
+**Saves live inside the bundle, and the bundle is not sealed.** `Byte.savefile`
+opens `r+b` and patches at a byte offset, so the 30 slot files (`r/s/d%d.grp`,
+75 MB) must exist and be writable. In a self-contained bundle they sit in
+`Contents/Resources/game/save/`. Signing the bundle would make every save
+invalidate its own signature, so only the executable and dylibs are ad-hoc
+signed -- which is all arm64 requires in order to run them. That is fine for a
+local build and is *not* suitable for distribution; a shippable app would seed
+saves into `SDL_GetPrefPath()` on first launch instead.
+
+`make app` re-mirrors everything except `save/`, which is copied only when
+absent -- so rebuilding does not wipe your progress. Delete `save/` inside the
+bundle to reset it.
+
+Only the executable and the dylibs carry signatures, and the executable is
+signed **outside** the bundle in a temp file before being moved in. Handed a
+path that is the bundle's `CFBundleExecutable`, `codesign` signs the enclosing
+bundle rather than the file -- writing `Contents/_CodeSignature` and sealing
+Resources, which every save written into `Resources/game/save/` would then
+invalidate. Staging it gets a plain Mach-O signature, the state a freshly
+linked binary is already in.
+
+The executable inside the bundle is named after the app, not `jyengine`:
+`CFBundleExecutable` decides which app owns the window, but the Dock, Force
+Quit and Activity Monitor all show the *process* name, which comes from the
+file itself.
+
+The icon comes from `game/AppIcon.icns`, supplied alongside the game data
+rather than generated. It is committed with the rest of `game/`; the Makefile
+still declares it as a target that reports a missing icon plainly, rather than
+failing with make's "No rule to make target", for trees assembled by hand.
+
+**Do not distribute the bundle -- or this repository**: `game/` is committed
+here, and those assets are grgame's mod and Jinyong's IP. Only `src/`,
+`tools/`, the Makefile and this README are yours to share. Keep the remote
+private.
+
 ## Formatting
 
     make format        # clang-format -i src/*.c src/*.h
@@ -104,6 +164,7 @@ after: nothing but whitespace moved.
 | `src/image.c` | libpng loader, `.col` palette |
 | `src/bytebuf.c` | the 11-function `Byte` table (binary record access) |
 | `src/lib.c` | the 46-function `lib` table |
+| `tools/make_app.sh` | assembles the `.app`: dylibs, rpaths, plist, signatures |
 
 ## Status
 

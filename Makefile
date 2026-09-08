@@ -47,4 +47,31 @@ clean:
 run: $(BIN)
 	./$(BIN) game
 
-.PHONY: all clean run format format-check
+# ---- .app bundle ------------------------------------------------------------
+# Self-contained, ~300 MB: the game data lives in Contents/Resources, so the
+# bundle is double-clickable with nothing beside it. The Homebrew dylibs are
+# copied in and rewritten to @rpath. It is not signed as a bundle -- the game
+# writes its saves in place, which would break a sealed signature; see
+# tools/make_app.sh.
+APP_NAME ?= 金庸群俠傳之龍啟江湖
+APP      := $(BUILD)/$(APP_NAME).app
+ICON     := game/AppIcon.icns
+
+# Supplied alongside the game data, not generated. It is committed with the
+# rest of game/; declaring it as a target still gives a useful message instead
+# of make's "No rule to make target" for a tree assembled by hand.
+$(ICON):
+	@echo "missing $@ -- put an .icns there (iconutil -c icns AppIcon.iconset)" >&2
+	@exit 1
+
+app: $(BIN) $(ICON)
+	tools/make_app.sh "$(APP)" $(BIN) $(ICON) game
+
+# Install into ~/Applications, where no admin rights are needed
+install-app: app
+	rm -rf "$(HOME)/Applications/$(APP_NAME).app"
+	mkdir -p "$(HOME)/Applications"
+	cp -R "$(APP)" "$(HOME)/Applications/"
+	@echo "installed to ~/Applications/$(APP_NAME).app"
+
+.PHONY: all clean run app install-app format format-check
