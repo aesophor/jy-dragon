@@ -122,7 +122,7 @@ static const char *root_near_exe(char *buf, size_t n) {
 }
 
 static bool run_file(lua_State *L, const char *path) {
-    if (luaL_loadfile(L, path)) {
+    if (jy_script_load(L, path)) {
         jy_log("load %s failed: %s", path, lua_tostring(L, -1));
         lua_pop(L, 1);
         return false;
@@ -165,6 +165,7 @@ int main(int argc, char **argv) {
 
     lua_State *L = luaL_newstate();
     luaL_openlibs(L);
+    jy_script_install(L); /* require() reads UTF-8 sources too */
 
     /* CONFIG.lua is plain Lua and sets CurrentPath/DataPath/ScriptLuaPath. */
     if (!run_file(L, "CONFIG.lua")) return 1;

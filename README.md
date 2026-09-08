@@ -171,7 +171,57 @@ after: nothing but whitespace moved.
 | `src/image.c` | libpng loader, `.col` palette |
 | `src/bytebuf.c` | the 11-function `Byte` table (binary record access) |
 | `src/lib.c` | the 46-function `lib` table |
+| `src/script.c` | script loading; transcodes UTF-8 sources to GBK |
+| `tools/to_utf8.py` | re-encodes `script/*.lua` between GBK and UTF-8 |
 | `tools/make_app.sh` | assembles the `.app`: dylibs, rpaths, plist, signatures |
+
+### Script encoding
+
+The scripts on disk are **UTF-8** -- readable and editable in any modern
+editor. `src/script.c` detects the encoding of each file and transcodes UTF-8
+sources to **GBK** before LuaJIT sees them, so the bytes the interpreter runs
+are byte-identical to the original GBK decompilation.
+
+That indirection is not cosmetic. The scripts do their own byte arithmetic on
+CJK text, and every bit of it assumes two bytes per wide character:
+
+| site | what it does |
+|---|---|
+| `jymain.lua:6404` | `GenTalkString` steps 2 bytes per wide char to wrap talk text, and budgets each line as `2 * columns - 1` bytes |
+| `jywar.lua:22000` | `string.sub(s, n*2 - 1, n*2)` slices out the n-th character |
+| `jymain.lua:3624` | `string.len(s) / 2 * font` is how pixel widths are computed -- about thirty sites do this, in `/2` and `/4` variants |
+| `MyOEvent.lua:9360` | `string.byte(s, -1) > 127` tests for a trailing wide char |
+
+A CJK character is 3 bytes in UTF-8, so converting the literals without
+touching that arithmetic would slice characters in half when wrapping dialogue
+and leave every centred label 1.5x too wide. Transcoding at load keeps all of
+it true, with nothing to re-verify.
+
+Detection is per file, so GBK and UTF-8 scripts coexist -- a file that is valid
+UTF-8 *and* uses a multi-byte sequence is transcoded, anything else is passed
+through. GBK text does not survive UTF-8 validation in practice: its trail
+bytes run `0x40`-`0xFE`, and those above `0xBF` cannot be UTF-8 continuation
+bytes. All 21 shipped scripts round-trip GBK -> UTF-8 -> GBK losslessly.
+
+A character with no GBK mapping is a hard error naming the file, line, byte
+offset and bytes, rather than a silent substitution -- a mangled literal would
+otherwise fail a comparison against Big5 data much later:
+
+    script: ./script/__bad.lua:1 has a character GBK cannot represent
+            (byte 11: F0 9F 90) -- not in GBK
+
+`JY_SCRIPT_DUMP=<dir>` writes out exactly what was handed to LuaJIT, which is
+how the byte-identity claim above is checked.
+
+To convert an existing GBK tree (`game/` is not tracked, so a fresh setup from
+the original data starts out GBK):
+
+    tools/to_utf8.py game/script game/CONFIG.lua
+    tools/to_utf8.py --to-gbk game/script      # and back
+
+The tool refuses to write anything that does not round-trip.
+
+Data files are unaffected: they stay **Big5**, bridged by `lib.CharSet`.
 
 ## Status
 

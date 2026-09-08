@@ -89,7 +89,12 @@ void jy_audio_update(void);
 void jy_play_music(const char *path);
 void jy_stop_music(void);
 bool jy_music_active(void);
-void jy_play_sound(const char *path);
+
+/* script.c -- UTF-8 source files, transcoded to GBK before LuaJIT sees them */
+char *jy_script_read(const char *path, size_t *out_len);
+int   jy_script_load(lua_State *L, const char *path);
+void  jy_script_install(lua_State *L);
+void  jy_play_sound(const char *path);
 
 /* ---- world map ---------------------------------------------------------- */
 bool jy_mmap_load(const char *files[5], int w, int h);
