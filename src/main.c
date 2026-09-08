@@ -170,6 +170,20 @@ int main(int argc, char **argv) {
     /* CONFIG.lua is plain Lua and sets CurrentPath/DataPath/ScriptLuaPath. */
     if (!run_file(L, "CONFIG.lua")) return 1;
 
+    /* CONFIG.Traditional = 1 renders Simplified text as Traditional. JY_TRAD
+     * overrides it either way, for A/B checks without editing CONFIG.lua. */
+    bool trad = false;
+    lua_getglobal(L, "CONFIG");
+    if (lua_istable(L, -1)) {
+        lua_getfield(L, -1, "Traditional");
+        trad = lua_toboolean(L, -1) && lua_tonumber(L, -1) != 0;
+        lua_pop(L, 1);
+    }
+    lua_pop(L, 1);
+    const char *trad_env = getenv("JY_TRAD");
+    if (trad_env) trad = (*trad_env != '0');
+    if (trad) jy_text_set_traditional(true);
+
     /* Screen size comes from CONFIG; 0 means "pick for me". */
     lua_getglobal(L, "CONFIG");
     lua_getfield(L, -1, "Width");
@@ -230,6 +244,27 @@ int main(int argc, char **argv) {
     if (luaL_loadstring(L, JY_COMPAT_LUA) || lua_pcall(L, 0, 0, 0))
         jy_log("compat shim failed: %s", lua_tostring(L, -1));
     else jy_log("compat: read_files patched for Windows text-mode semantics");
+
+    /* JY_TEST_TRAD draws the same GBK line twice so the Simplified ->
+     * Traditional display conversion can be compared side by side. The sample
+     * is written as GBK escapes because that is exactly what a script literal
+     * is by the time it reaches DrawStr. */
+    if (getenv("JY_TEST_TRAD")) {
+        static const char *T =
+            "IncludeFile() SetGlobalConst() SetGlobal()\n"
+            "local sample = '\xBC\xF2\xCC\xE5\xB2\xE2\xCA\xD4 \xB7\xC0\xD3\xF9\xC1\xA6 "
+            "\xCC\xEC\xB8\xB3 \xCE\xDE \xD6\xDA \xB7\xA2 "
+            "\xBF\xAA\xCA\xBC\xD0\xC2\xD3\xCE\xCF\xB7 \xD5\xBD\xB6\xB7\xCA\xA4\xC0\xFB'\n"
+            "lib.SetClip(0, 0, 0, 0)\n"
+            "lib.FillColor(0, 0, CC.ScreenW, 160, 0x101820)\n"
+            "lib.DrawStr(40, 40, sample, 0xECECEC, 44, CC.FontName, 0, 0)\n"
+            "lib.DrawStr(40, 100, sample, 0x80D0FF, 28, CC.FontName, 0, 0)\n"
+            "lib.Debug('sample is '..#sample..' bytes -- unchanged by conversion')\n"
+            "SNAP('trad')\n";
+        if (luaL_loadstring(L, T) || lua_pcall(L, 0, 0, 0))
+            jy_log("trad test failed: %s", lua_tostring(L, -1));
+        goto done;
+    }
 
     /* JY_TEST_MUSIC replays the battle-victory sequence: switch to a track
      * that does not exist, which must leave silence rather than the previous

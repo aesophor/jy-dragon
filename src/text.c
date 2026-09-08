@@ -12,6 +12,7 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <iconv.h>
+#include "s2t_table.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -64,6 +65,39 @@ static FT_Face get_face(const char *path, int size) {
     return f;
 }
 
+/* Simplified -> Traditional display conversion (CONFIG.Traditional).
+ *
+ * This happens here, on the UCS-2 code points, rather than in the script
+ * sources -- converting those is not possible while the runtime encoding is
+ * GBK. Traditional characters live in GBK's extension areas, where the trail
+ * byte is often ASCII: 衆 is D0 5C, a literal backslash, and 並 is 81 4B, a
+ * 'K'. Rewriting the literals makes 18 of the 21 scripts fail to parse.
+ *
+ * Converting at raster time also leaves table keys, save contents and every
+ * byte-length calculation untouched, and it catches data-file text too. The
+ * map is strictly one-to-one, so no string changes width.
+ */
+static bool g_trad;
+
+void jy_text_set_traditional(bool on) {
+    g_trad = on;
+    if (on)
+        jy_log("text: Simplified -> Traditional display conversion on "
+               "(%zu character mappings)",
+               (size_t)JY_S2T_COUNT);
+}
+
+static uint16_t s2t(uint16_t cp) {
+    int lo = 0, hi = (int)JY_S2T_COUNT - 1;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        if (jy_s2t[mid].s < cp) lo = mid + 1;
+        else if (jy_s2t[mid].s > cp) hi = mid - 1;
+        else return jy_s2t[mid].t;
+    }
+    return cp;
+}
+
 /* Convert a native-charset string to UCS-2LE. Returns count of code units. */
 static int to_ucs2(const char *s, size_t slen, int src_charset, uint16_t *out,
                    int outmax) {
@@ -91,7 +125,11 @@ static int to_ucs2(const char *s, size_t slen, int src_charset, uint16_t *out,
         }
     }
     iconv_close(cd);
-    return (int)((uint16_t *)outbuf - out);
+
+    int n = (int)((uint16_t *)outbuf - out);
+    if (g_trad)
+        for (int i = 0; i < n; i++) out[i] = s2t(out[i]);
+    return n;
 }
 
 static void blit_glyph(FT_Bitmap *bm, int px, int py, uint32_t rgb) {

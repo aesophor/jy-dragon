@@ -57,6 +57,7 @@ void jy_text_shutdown(void);
 /* src_charset: 0 = data is Big5, 1 = data is GBK (CONFIG.CharSet) */
 void jy_draw_string(int x, int y, const char *s, uint32_t rgb, int size, const char *font,
                     int src_charset);
+void jy_text_set_traditional(bool on);
 
 /* ---- images ------------------------------------------------------------- */
 bool         jy_load_palette(const char *path);
