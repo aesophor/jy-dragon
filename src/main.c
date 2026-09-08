@@ -401,7 +401,7 @@ int main(int argc, char **argv) {
             "IncludeFile() SetGlobalConst() SetGlobal()\n"
             "local n = tonumber(os.getenv('JY_TEST_WAR'))\n"
             "lib.PicInit(CC.PaletteFile)\n"
-            "lib.PicLoadFile(CC.SMAPPicFile[1], CC.SMAPPicFile[2], 0)\n"
+            "lib.PicLoadFile(CC.WMAPPicFile[1], CC.WMAPPicFile[2], 0)\n"
             "lib.LoadWarMap(CC.WarMapFile[1], CC.WarMapFile[2], n, 7, CC.WarWidth, CC.WarHeight)\n"
             "local g, s, sx, sy = 0, 0, 0, 0\n"
             "local x0, x1, y0, y1 = 999, -1, 999, -1\n"
@@ -433,8 +433,33 @@ int main(int argc, char **argv) {
             "lib.Debug('plane0 distinct ids: loaded='..okc..' missing='..miss..\n"
             "          '  missing samples: '..table.concat(sample, \',\'))\n"
             "lib.SetClip(0, 0, 0, 0)\n"
+            /* layers 2 and 5 mean "no unit here" at -1, not 0 */
+            "lib.CleanWarMap(2, -1) lib.CleanWarMap(5, -1)\n"
             "lib.DrawWarMap(0, cx, cy, 0, 0, -1, -1)\n"
-            "SNAP('war')\n";
+            "SNAP('war')\n"
+            /* overlay passes: modes 1/2 shade the reachable set, mode 3
+         * silhouettes flagged units, mode 0 paints the layer-6 markers */
+            "if os.getenv('JY_TEST_WAR_OVERLAY') then\n"
+            "  lib.CleanWarMap(4, 0)  lib.CleanWarMap(6, -2)\n"
+            "  lib.CleanWarMap(3, 255)\n"
+            "  for y = cy - 6, cy + 6 do for x = cx - 6, cx + 6 do\n"
+            "    if math.abs(x - cx) + math.abs(y - cy) <= 6 then\n"
+            "      lib.SetWarMap(x, y, 3, 10)\n"
+            "    end\n"
+            "  end end\n"
+            "  lib.DrawWarMap(1, cx, cy, cx + 2, cy, -1, -1) SNAP('war_move')\n"
+            "  lib.DrawWarMap(2, cx, cy, cx + 2, cy, -1, -1) SNAP('war_atk')\n"
+            "  lib.CleanWarMap(3, 255)\n"
+            "  for i = 1, 4 do lib.SetWarMap(cx - i, cy + i, 6, i) end\n"
+            "  lib.DrawWarMap(0, cx, cy, 0, 0, -1, -1)\n"
+            "  SNAP('war_marks')\n"
+            "  lib.SetWarMap(cx, cy, 2, 0)     lib.SetWarMap(cx, cy, 5, 100)\n"
+            "  lib.SetWarMap(cx, cy, 4, 2)\n"
+            "  lib.SetWarMap(cx + 3, cy, 2, 0) lib.SetWarMap(cx + 3, cy, 5, 100)\n"
+            "  lib.SetWarMap(cx + 3, cy, 4, 0)\n"
+            "  lib.CleanWarMap(6, -2)\n"
+            "  lib.DrawWarMap(3, cx, cy, 0, 0, -1, -1) SNAP('war_sel')\n"
+            "end\n";
         if (luaL_loadstring(L, W) || lua_pcall(L, 0, 0, 0))
             jy_log("war test failed: %s", lua_tostring(L, -1));
         goto done;

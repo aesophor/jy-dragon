@@ -218,7 +218,6 @@ original Windows build.
 
 Not yet implemented:
 
-- `DrawWarMap`'s rarer modes are approximated -- see below
 - `DrawSMap` is written but only exercised by save slots that start in a scene
 - `PlayMPEG` is a permanent stub -- no script calls it
 
@@ -272,9 +271,46 @@ Planes 0 and 1 are roughly complementary: narrow walkable corridors against a
 dense wall mass. On cave maps the floor tiles are near-black (mean brightness
 ~123/765), so large dark areas are correct, not missing tiles.
 
-Approximated: the `flags` values `6`/`10` that `DrawWarMap` passes for
-range shading, and the exact tinting of mode 3's dimmed units. Structure and
-placement are faithful; those two visual details were not pinned down.
+### Sprite blit flags (recovered, verified)
+
+`PicLoadCache(slot, id, x, y, flags, alpha)` -- and the tinted form
+`DrawWarMap` uses internally -- take a bitfield that `sub_408710` decodes:
+
+| bit | meaning |
+| --- | --- |
+| `1` | draw at `(x,y)` verbatim instead of at the sprite's hotspot |
+| `2` | enable alpha blending; **without it `alpha` is ignored** and the blit is opaque |
+| `4` | flat black -- checked first, so `4` beats `8` and `0x10` |
+| `8` | flat white |
+| `0x10` | flat fill with the colour argument |
+
+Bits `4`/`8`/`0x10` are only consulted when bit `2` is set, and they *replace*
+the art rather than shading it: the original builds a scratch copy of the
+sprite and overwrites every non-colour-key pixel. So `DrawWarMap`'s range
+overlays are tile-shaped **silhouettes** -- flat black at `alpha 64` for the
+movement range (`flags 6`), flat white for the attack range (`flags 10`),
+doubled to `128` on the cell under the cursor -- and the layer-6 markers
+(`flags 18`, `alpha 192`) are solid lozenges in one of four colours:
+
+    1  0x05D010 green    3  0x0000F0 blue
+    2  0xD52210 orange   4  0xA010A0 purple
+
+Mode 3 blits units whose layer-4 flag is `> 1` as an **opaque** black
+silhouette (`flags 6`, `alpha 255`); the rest draw normally.
+
+Two details worth knowing:
+
+- Alpha is clamped to 255 before the blit (`0x408726`), so scripts passing
+  larger values get an opaque blit rather than wrapping.
+- Passes 1 and 2 walk one **screen row** per outer step, downwards -- the
+  original's inner loop holds `i+j` constant. Iterating by column instead lets
+  a shallower row's tile paint over a deeper row's marker and erase it.
+
+One data quirk that is **not** a port bug: the marker mask is record 0 of
+whatever archive is in pic slot 0, and `smap.grp`'s record 0 carries hotspot
+`(0,0)` where every other tile uses `(18,17)`. Battles load `wmap.grp`
+(record 0 correct), but the outdoor variant at `jywar.lua:18903` loads `smap`,
+where the original misplaces its markers too.
 
 ### Audio
 

@@ -16,7 +16,8 @@
  *   1  scenery sprite
  *   2  occupying team/unit id   (>= 0 means occupied; also picks a sprite slot)
  *   3  movement-range cost      (< 128 means reachable)
- *   4  per-cell flag            (mode 3 dims cells with value <= 1)
+ *   4  per-cell flag            (mode 3 silhouettes units with value > 1;
+ *                                 also marks cells for the animation overlay)
  *   5  unit sprite id
  *   6  marker type 1..4         (coloured overlay)
  *
@@ -106,10 +107,10 @@ void jy_clean_warmap(int layer, int value) {
 /* Marker colours for layer 6, values 1..4 (from the switch in sub_405500). */
 static int marker_tint(int kind) {
     switch (kind) {
-    case 1: return 380944;   /* 0x05D010 */
-    case 2: return 13967888; /* 0xD52BD0 */
-    case 3: return 240;      /* 0x0000F0 */
-    case 4: return 10490016; /* 0xA00CE0 */
+    case 1: return 380944;   /* 0x05D010  green  */
+    case 2: return 13967888; /* 0xD52210  orange */
+    case 3: return 240;      /* 0x0000F0  blue   */
+    case 4: return 10490016; /* 0xA010A0  purple */
     default: return 0xFFFFFF;
     }
 }
@@ -125,9 +126,19 @@ void jy_draw_warmap(int mode, int camx, int camy, int a4, int a5, int anim_id, i
 /* elevation of a cell, from the scene map underneath */
 #define ELEV(mx, my) (scene >= 0 ? jy_get_s(scene, (mx), (my), 4) : 0)
 
-    /* pass 1: ground tiles and coloured markers */
-    for (int i = -R; i <= R; i++) {
-        for (int j = -R; j <= R; j++) {
+    /* pass 1: ground tiles and coloured markers.
+     * The original walks one screen row per outer step (its inner loop keeps
+     * i+j constant, so sy is fixed) and works downwards -- painter order.
+     * Iterating by column instead lets a shallower row's tile land on top of
+     * a deeper row's marker and erase it. */
+    for (int depth = -2 * R; depth <= 2 * R; depth++) {
+        int lo = depth - R;
+        if (lo < -R) lo = -R;
+        int hi = depth + R;
+        if (hi > R) hi = R;
+        for (int i = lo; i <= hi; i++) {
+            int j = depth - i;
+            if (j < -R || j > R) continue;
             int sx = cx + g_xscale * (i - j);
             int sy = cy + g_yscale * (i + j);
             if (sx < -64 || sx > g_e.w + 64 || sy < -64 || sy > g_e.h + 64) continue;
@@ -137,6 +148,8 @@ void jy_draw_warmap(int mode, int camx, int camy, int a4, int a5, int anim_id, i
             int ground = jy_get_warmap(mx, my, 0);
             if (ground > 0) jy_pic_draw(WAR_SLOT, ground, sx, sy, 0, 0);
 
+            /* flags 18 == blend | flat-fill: a solid lozenge in the marker
+             * colour, drawn from the base tile's shape (sprite 0). */
             int marker = jy_get_warmap(mx, my, 6);
             if (marker > 0) {
                 int e = ELEV(mx, my);
@@ -145,10 +158,19 @@ void jy_draw_warmap(int mode, int camx, int camy, int a4, int a5, int anim_id, i
         }
     }
 
-    /* pass 2: movement / attack range shading, only in modes 1 and 2 */
+    /* pass 2: movement / attack range shading, only in modes 1 and 2.
+     * flags 6 == blend | flat black, flags 10 == blend | flat white, so the
+     * reachable cells are tinted dark (move) or pale (attack); the cell under
+     * the cursor gets double the alpha. */
     if (mode == 1 || mode == 2) {
-        for (int i = -R; i <= R; i++) {
-            for (int j = -R; j <= R; j++) {
+        for (int depth = -2 * R; depth <= 2 * R; depth++) {
+            int lo = depth - R;
+            if (lo < -R) lo = -R;
+            int hi = depth + R;
+            if (hi > R) hi = R;
+            for (int i = lo; i <= hi; i++) {
+                int j = depth - i;
+                if (j < -R || j > R) continue;
                 int sx = cx + g_xscale * (i - j);
                 int sy = cy + g_yscale * (i + j);
                 if (sx < -64 || sx > g_e.w + 64 || sy < -64 || sy > g_e.h + 64) continue;
@@ -188,10 +210,11 @@ void jy_draw_warmap(int mode, int camx, int camy, int a4, int a5, int anim_id, i
             if (team >= 0 && unit >= 0) {
                 switch (mode) {
                 case 3: {
-                    /* dim units that have already acted */
-                    int spent = jy_get_warmap(mx, my, 4) <= 1;
-                    jy_pic_draw(WAR_SLOT, unit, sx, sy - e, spent ? 0 : 6,
-                                spent ? 0 : 255);
+                    /* Layer 4 is set to 2 for the units this pass wants to
+                     * call out; those blit as an opaque black silhouette
+                     * (flags 6, alpha 255), everything else draws normally. */
+                    int flat = jy_get_warmap(mx, my, 4) > 1;
+                    jy_pic_draw(WAR_SLOT, unit, sx, sy - e, flat ? 6 : 0, flat ? 255 : 0);
                     break;
                 }
                 case 4:

@@ -27,10 +27,16 @@
 
 #define MAX_PIC_SLOTS 100 /* the original rejects slot >= 100 */
 
+#define SILH_CACHE 4 /* black, white + the 4 marker colours */
+
 typedef struct {
     SDL_Surface *surf;
     int          ox, oy;
     bool         tried;
+    /* flat-fill copies used by the flags 4/8/0x10 blit paths */
+    SDL_Surface *silh[SILH_CACHE];
+    uint32_t     silh_col[SILH_CACHE];
+    int          silh_next;
 } PicEntry;
 
 typedef struct {
@@ -83,8 +89,11 @@ static uint8_t *slurp(const char *path, size_t *len) {
 
 static void slot_free(PicSlot *s) {
     if (s->cache) {
-        for (int i = 0; i < s->count; i++)
+        for (int i = 0; i < s->count; i++) {
             if (s->cache[i].surf) SDL_DestroySurface(s->cache[i].surf);
+            for (int k = 0; k < SILH_CACHE; k++)
+                if (s->cache[i].silh[k]) SDL_DestroySurface(s->cache[i].silh[k]);
+        }
         free(s->cache);
     }
     free(s->offs);
@@ -203,8 +212,53 @@ static PicEntry *pic_entry(int slot, int index) {
     return e;
 }
 
+/* Flat-fill copy of a sprite: every visible pixel becomes `rgb`, per-pixel
+ * alpha is kept.  The original does this by hand on a scratch surface --
+ * FillRect with the colour key, blit the sprite over it, then overwrite every
+ * non-key pixel (sub_408710).  Building it once per (sprite, colour) is the
+ * same picture for much less work; four colours is enough for every caller.
+ */
+static SDL_Surface *silhouette(PicEntry *e, uint32_t rgb) {
+    rgb &= 0xFFFFFFu;
+    for (int k = 0; k < SILH_CACHE; k++)
+        if (e->silh[k] && e->silh_col[k] == rgb) return e->silh[k];
+
+    SDL_Surface *src = e->surf;
+    SDL_Surface *out = SDL_CreateSurface(src->w, src->h, SDL_PIXELFORMAT_ARGB8888);
+    if (!out) return src;
+    int             spitch = src->pitch / 4, dpitch = out->pitch / 4;
+    const uint32_t *sp = (const uint32_t *)src->pixels;
+    uint32_t       *dp = (uint32_t *)out->pixels;
+    for (int y = 0; y < src->h; y++)
+        for (int x = 0; x < src->w; x++) {
+            uint32_t px                = sp[(size_t)y * spitch + x];
+            dp[(size_t)y * dpitch + x] = px ? ((px & 0xFF000000u) | rgb) : 0;
+        }
+
+    int k        = e->silh_next;
+    e->silh_next = (k + 1) % SILH_CACHE;
+    if (e->silh[k]) SDL_DestroySurface(e->silh[k]);
+    e->silh[k]     = out;
+    e->silh_col[k] = rgb;
+    return out;
+}
+
 /* PicLoadCache(slot, id, x, y, flags, alpha) -- note index == id / 2.
- * `tint` is 0xRRGGBB or -1 for none; DrawWarMap colours its marker overlays. */
+ *
+ * `flags` is the bitfield sub_408710 decodes (`tint` is its colour argument,
+ * 0xRRGGBB, or -1 for none):
+ *
+ *   bit 0 (1)     draw at (x,y) verbatim instead of at the sprite's hotspot
+ *   bit 1 (2)     enable alpha blending -- without it `alpha` is ignored and
+ *                 the blit is opaque
+ *   bit 2 (4)     flat black  (checked first, so 4 beats 8 and 0x10)
+ *   bit 3 (8)     flat white
+ *   bit 4 (0x10)  flat `tint`
+ *
+ * Bits 2-4 are only looked at when bit 1 is set, and they replace the art
+ * rather than shading it -- DrawWarMap's range overlays (flags 6 and 10) are
+ * black and white tile-shaped silhouettes, not darkened or lightened tiles.
+ */
 void jy_pic_draw_tinted(int slot, int id, int x, int y, int flags, int alpha, int tint) {
     PicEntry *e = pic_entry(slot, id / 2);
     if (!e || !e->surf) return;
@@ -214,17 +268,23 @@ void jy_pic_draw_tinted(int slot, int id, int x, int y, int flags, int alpha, in
     }
     SDL_Rect dst = {x, y, e->surf->w, e->surf->h};
 
-    if (alpha > 0 && alpha < 255) {
-        SDL_SetSurfaceAlphaMod(e->surf, (Uint8)alpha);
-        SDL_SetSurfaceBlendMode(e->surf, SDL_BLENDMODE_BLEND);
-    } else {
+    if (!(flags & 2)) { /* plain opaque blit */
         SDL_SetSurfaceAlphaMod(e->surf, 255);
+        SDL_BlitSurface(e->surf, NULL, g_e.screen, &dst);
+        return;
     }
-    if (tint >= 0)
-        SDL_SetSurfaceColorMod(e->surf, (Uint8)(tint >> 16), (Uint8)(tint >> 8),
-                               (Uint8)tint);
-    SDL_BlitSurface(e->surf, NULL, g_e.screen, &dst);
-    if (tint >= 0) SDL_SetSurfaceColorMod(e->surf, 255, 255, 255);
+
+    SDL_Surface *src = e->surf;
+    if (flags & 4) src = silhouette(e, 0x000000);
+    else if (flags & 8) src = silhouette(e, 0xFFFFFF);
+    else if (flags & 0x10) src = silhouette(e, tint >= 0 ? (uint32_t)tint : 0xFFFFFF);
+
+    if (alpha > 255) alpha = 255; /* the engine clamps, see 0x408726 */
+    if (alpha < 0) alpha = 0;
+    SDL_SetSurfaceAlphaMod(src, (Uint8)alpha);
+    SDL_SetSurfaceBlendMode(src, SDL_BLENDMODE_BLEND);
+    SDL_BlitSurface(src, NULL, g_e.screen, &dst);
+    SDL_SetSurfaceAlphaMod(src, 255);
 }
 
 void jy_pic_draw(int slot, int id, int x, int y, int flags, int alpha) {
