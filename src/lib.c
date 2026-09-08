@@ -346,6 +346,37 @@ static int l_PlayWAV(lua_State *L) {
     return 0;
 }
 
+/* LoadWarMap(idxFile, grpFile, mapIndex, layers, w, h) */
+static int l_LoadWarMap(lua_State *L) {
+    const char *idx = lua_tostring(L, 1);
+    const char *grp = lua_tostring(L, 2);
+    if (idx && grp)
+        jy_warmap_load(idx, grp, argi(L, 3, 0), argi(L, 4, 7), argi(L, 5, 64),
+                       argi(L, 6, 64));
+    return 0;
+}
+
+static int l_GetWarMap(lua_State *L) {
+    lua_pushnumber(L, jy_get_warmap(argi(L, 1, 0), argi(L, 2, 0), argi(L, 3, 0)));
+    return 1;
+}
+static int l_SetWarMap(lua_State *L) {
+    jy_set_warmap(argi(L, 1, 0), argi(L, 2, 0), argi(L, 3, 0), argi(L, 4, 0));
+    return 0;
+}
+static int l_CleanWarMap(lua_State *L) {
+    jy_clean_warmap(argi(L, 1, 0), argi(L, 2, 0));
+    return 0;
+}
+
+/* DrawWarMap(mode, camX, camY, a4, a5, animId, scene [, animSlot, ax, ay]) */
+static int l_DrawWarMap(lua_State *L) {
+    jy_draw_warmap(argi(L, 1, 0), argi(L, 2, 0), argi(L, 3, 0), argi(L, 4, 0),
+                   argi(L, 5, 0), argi(L, 6, -1), argi(L, 7, -1), argi(L, 8, -1),
+                   argi(L, 9, -1), argi(L, 10, -1));
+    return 0;
+}
+
 /* LoadMMap(earth, surface, building, buildx, buildy, w, h, playerX, playerY) */
 static int l_LoadMMap(lua_State *L) {
     const char *f[5];
@@ -415,11 +446,6 @@ static int l_SetD(lua_State *L) {
     }
 
 STUB(PlayMPEG, 0) /* never called by the scripts */
-STUB(LoadWarMap, 0)
-STUB(GetWarMap, 1)
-STUB(SetWarMap, 0)
-STUB(CleanWarMap, 0)
-STUB(DrawWarMap, 0)
 
 static const luaL_Reg LIB_FUNCS[] = {/* implemented */
                                      {"Debug", l_Debug},

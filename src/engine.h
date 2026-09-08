@@ -67,6 +67,17 @@ SDL_Surface *jy_png_get(int slot, int id); /* id is pre-doubled; index = id/2 */
 bool jy_pic_set_palette(const char *path);
 bool jy_pic_load_file(int slot, const char *idx, const char *grp, int w, int h);
 void jy_pic_draw(int slot, int id, int x, int y, int flags, int alpha);
+void jy_pic_draw_tinted(int slot, int id, int x, int y, int flags, int alpha, int tint);
+
+/* ---- battle map --------------------------------------------------------- */
+bool jy_warmap_load(const char *idx, const char *grp, int map_index, int layers, int w,
+                    int h);
+int  jy_get_warmap(int x, int y, int layer);
+void jy_set_warmap(int x, int y, int layer, int v);
+void jy_clean_warmap(int layer, int value);
+void jy_draw_warmap(int mode, int camx, int camy, int a4, int a5, int anim_id, int scene,
+                    int anim_slot, int ax, int ay);
+void jy_warmap_set_scale(int xs, int ys);
 void jy_pic_xy(int slot, int id, int *w, int *h, int *ox, int *oy);
 
 /* ---- audio -------------------------------------------------------------- */

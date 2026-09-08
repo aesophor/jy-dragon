@@ -203,8 +203,9 @@ static PicEntry *pic_entry(int slot, int index) {
     return e;
 }
 
-/* PicLoadCache(slot, id, x, y, flags, alpha) -- note index == id / 2 */
-void jy_pic_draw(int slot, int id, int x, int y, int flags, int alpha) {
+/* PicLoadCache(slot, id, x, y, flags, alpha) -- note index == id / 2.
+ * `tint` is 0xRRGGBB or -1 for none; DrawWarMap colours its marker overlays. */
+void jy_pic_draw_tinted(int slot, int id, int x, int y, int flags, int alpha, int tint) {
     PicEntry *e = pic_entry(slot, id / 2);
     if (!e || !e->surf) return;
     if (!(flags & 1)) {
@@ -212,13 +213,22 @@ void jy_pic_draw(int slot, int id, int x, int y, int flags, int alpha) {
         y -= e->oy;
     }
     SDL_Rect dst = {x, y, e->surf->w, e->surf->h};
+
     if (alpha > 0 && alpha < 255) {
         SDL_SetSurfaceAlphaMod(e->surf, (Uint8)alpha);
         SDL_SetSurfaceBlendMode(e->surf, SDL_BLENDMODE_BLEND);
     } else {
         SDL_SetSurfaceAlphaMod(e->surf, 255);
     }
+    if (tint >= 0)
+        SDL_SetSurfaceColorMod(e->surf, (Uint8)(tint >> 16), (Uint8)(tint >> 8),
+                               (Uint8)tint);
     SDL_BlitSurface(e->surf, NULL, g_e.screen, &dst);
+    if (tint >= 0) SDL_SetSurfaceColorMod(e->surf, 255, 255, 255);
+}
+
+void jy_pic_draw(int slot, int id, int x, int y, int flags, int alpha) {
+    jy_pic_draw_tinted(slot, id, x, y, flags, alpha, -1);
 }
 
 /* PicGetXY(slot, id) -> w, h, offsetX, offsetY */

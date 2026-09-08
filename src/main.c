@@ -186,6 +186,7 @@ int main(int argc, char **argv) {
     lua_pop(L, 1);
     jy_smap_set_scale(xs, ys);
     jy_mmap_set_scale(xs, ys);
+    jy_warmap_set_scale(xs, ys);
     jy_log("key profile: CONFIG.Operation=%d (%s arrow codes)", op,
            op == 1 ? "SDL2" : "SDL 1.2");
     if (w <= 0) w = 1220;
@@ -220,6 +221,51 @@ int main(int argc, char **argv) {
     if (luaL_loadstring(L, JY_COMPAT_LUA) || lua_pcall(L, 0, 0, 0))
         jy_log("compat shim failed: %s", lua_tostring(L, -1));
     else jy_log("compat: read_files patched for Windows text-mode semantics");
+
+    /* JY_TEST_WAR=<n> loads battle map n and renders it. */
+    if (getenv("JY_TEST_WAR")) {
+        static const char *W =
+            "IncludeFile() SetGlobalConst() SetGlobal()\n"
+            "local n = tonumber(os.getenv('JY_TEST_WAR'))\n"
+            "lib.PicInit(CC.PaletteFile)\n"
+            "lib.PicLoadFile(CC.SMAPPicFile[1], CC.SMAPPicFile[2], 0)\n"
+            "lib.LoadWarMap(CC.WarMapFile[1], CC.WarMapFile[2], n, 7, CC.WarWidth, CC.WarHeight)\n"
+            "local g, s, sx, sy = 0, 0, 0, 0\n"
+            "local x0, x1, y0, y1 = 999, -1, 999, -1\n"
+            "for y = 0, CC.WarHeight - 1 do for x = 0, CC.WarWidth - 1 do\n"
+            "  if lib.GetWarMap(x, y, 0) > 0 then\n"
+            "    g = g + 1 sx = sx + x sy = sy + y\n"
+            "    if x < x0 then x0 = x end\n"
+            "    if x > x1 then x1 = x end\n"
+            "    if y < y0 then y0 = y end\n"
+            "    if y > y1 then y1 = y end\n"
+            "  end\n"
+            "  if lib.GetWarMap(x, y, 1) > 0 then s = s + 1 end\n"
+            "end end\n"
+            "local cx = g > 0 and math.floor(sx / g) or 32\n"
+            "local cy = g > 0 and math.floor(sy / g) or 32\n"
+            "lib.Debug('war map '..n..': ground='..g..' scenery='..s..\n"
+            "          '  bbox x '..x0..'..'..x1..' y '..y0..'..'..y1..'  centre '..cx..','..cy)\n"
+            "local ids, miss, okc = {}, 0, 0\n"
+            "for y = 0, CC.WarHeight - 1 do for x = 0, CC.WarWidth - 1 do\n"
+            "  local v = lib.GetWarMap(x, y, 0)\n"
+            "  if v > 0 then ids[v] = true end\n"
+            "end end\n"
+            "local sample = {}\n"
+            "for id in pairs(ids) do\n"
+            "  local w = lib.PicGetXY(0, id)\n"
+            "  if w == 0 then miss = miss + 1 if #sample < 6 then sample[#sample+1] = id end\n"
+            "  else okc = okc + 1 end\n"
+            "end\n"
+            "lib.Debug('plane0 distinct ids: loaded='..okc..' missing='..miss..\n"
+            "          '  missing samples: '..table.concat(sample, \',\'))\n"
+            "lib.SetClip(0, 0, 0, 0)\n"
+            "lib.DrawWarMap(0, cx, cy, 0, 0, -1, -1)\n"
+            "SNAP('war')\n";
+        if (luaL_loadstring(L, W) || lua_pcall(L, 0, 0, 0))
+            jy_log("war test failed: %s", lua_tostring(L, -1));
+        goto done;
+    }
 
     /* JY_TEST_ERASE reproduces the dialogue-erase sequence in isolation:
      * draw map -> draw a dialogue box over it -> redraw map. Frames A and C

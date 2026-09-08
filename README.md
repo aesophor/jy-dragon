@@ -181,14 +181,48 @@ scene renderer, and the world map with its five layers.
 
 Audio works: looping music and cached sound effects.
 
+Battle maps work: terrain, scenery, movement-range shading and unit sprites.
+
 Not yet implemented:
 
-- **Battle maps**: `LoadWarMap`/`DrawWarMap`/`GetWarMap`/`SetWarMap`/
-  `CleanWarMap`. `warfld.grp` records are 16384 B = 64x64 x 4 B, i.e. two int16
-  layers; the renderer should mirror `render_smap.c`.
 - `ShowSlow`'s gradual fade (presents immediately)
+- `DrawWarMap`'s rarer modes are approximated -- see below
 - `DrawSMap` is written but only exercised by save slots that start in a scene
 - `PlayMPEG` is a permanent stub -- no script calls it
+
+### Battle map layout (recovered, verified)
+
+Seven layers of 64x64 `int16`, indexed layer-major like the scene maps:
+`buf[layer*w*h + y*w + x]`. `LoadWarMap(idx, grp, n, 7, 64, 64)` allocates all
+seven but reads only **two** from `warfld.grp` -- a record is 16384 B =
+64*64*2*2. The other five are runtime combat state the scripts fill via
+`SetWarMap` / `CleanWarMap`:
+
+| layer | meaning |
+|---|---|
+| 0 | ground/floor sprite (from file) |
+| 1 | wall/scenery sprite (from file) |
+| 2 | occupying team id; also selects the unit sprite slot (`team + 4`) |
+| 3 | movement-range cost -- `< 128` means reachable |
+| 4 | per-cell flag; mode 3 dims cells with value <= 1 |
+| 5 | unit sprite id |
+| 6 | marker type 1..4, drawn as a coloured overlay |
+
+The `.idx` gives the record offset at `(n-1)*4`; `n == 0` means offset 0.
+`CleanWarMap(layer, value)` fills an entire layer.
+
+Elevation comes from the **scene** map's layer 4, not the battle map: the 7th
+argument to `DrawWarMap` is a scene id, and the renderer offsets each cell by
+`GetS(scene, x, y, 4)`. Battles do *not* draw the scene underneath -- the
+battle map's own layer 0 is the whole floor, so empty cells are genuine void.
+
+Planes 0 and 1 are roughly complementary: narrow walkable corridors against a
+dense wall mass. On cave maps the floor tiles are near-black (mean brightness
+~123/765), so large dark areas are correct, not missing tiles.
+
+Approximated: the `flags` values `6`/`10` that `DrawWarMap` passes for
+range shading, and the exact tinting of mode 3's dimmed units. Structure and
+placement are faithful; those two visual details were not pinned down.
 
 ### Audio
 
