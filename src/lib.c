@@ -227,9 +227,20 @@ static int l_CharSet(lua_State *L) {
     size_t il = n, ol = outcap;
     while (il && ol) {
         if (iconv(cd, &ip, &il, &op, &ol) != (size_t)-1) break;
-        ip++;
-        il--; /* skip an undecodable byte */
-        if (ol) {
+        /* Unmappable character. Both Big5 and GBK use lead bytes >= 0x81 for
+         * two-byte characters, so consume the WHOLE character and emit one
+         * '?' per byte -- skipping a single byte would land mid-character and
+         * corrupt everything after it. hzmb.dat, the original engine's
+         * conversion table, stores missing entries as the two bytes "??" for
+         * exactly this reason.
+         *
+         * This is reachable in normal play: FINALWORK2 assigns the Simplified
+         * literal "逍遥子" to a record holding Traditional Big5, and 遥 has no
+         * Big5 form. */
+        size_t step = (il >= 2 && (unsigned char)*ip >= 0x81) ? 2 : 1;
+        ip += step;
+        il -= step;
+        for (size_t k = 0; k < step && ol; k++) {
             *op++ = '?';
             ol--;
         }

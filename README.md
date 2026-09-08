@@ -69,6 +69,11 @@ Environment variables, for automated runs:
 | `JY_KEYS=13,274,13` | feed synthetic keypresses, one per `GetKey`, to walk menus headlessly |
 | `JY_SNAPSHOT_RAW=1` | dump the software framebuffer instead of the window, to tell "not drawn" from "not presented" |
 | `JY_TEST_TALK=n` | render dialogue record n and dump its bytes, without navigating to an NPC |
+| `JY_TEST_WAR=n` | load and render battle map n |
+| `JY_TEST_ERASE=1` | draw scene, overlay dialogue boxes, redraw, diff the frames |
+| `JY_TEST_SAVE=1` | round-trip the save write primitives (`Byte.savefile`, `SaveSMap`) |
+| `JY_TEST_SAVEREC=a,b` | run the real `SaveRecord` end to end: load slot a, save to slot b, reload |
+| `JY_TEST_SWEEP=1` | exercise the whole data surface: every dialogue record, scene, battle map and save slot |
 
 On exit the engine prints a census of every `lib.*` function the run needed but
 that isn't implemented yet, ordered by call count — that list is the to-do list.
@@ -182,6 +187,32 @@ scene renderer, and the world map with its five layers.
 Audio works: looping music and cached sound effects.
 
 Battle maps work: terrain, scenery, movement-range shading and unit sprites.
+
+`SaveRecord` is verified end to end by `JY_TEST_SAVEREC` (slot 1 -> 9, reload,
+then a byte-level diff of every record): exactly one field differs, and that is
+`FINALWORK2` deliberately assigning the Simplified literal `"逍遥子"` to a
+record holding Traditional Big5 -- 遥 has no Big5 form, so it degrades to
+`逍??子`, matching the original engine (`hzmb.dat` stores unmappable entries as
+the two bytes `??`).
+
+`JY_TEST_SWEEP` is clean across the full data surface: 4024/4024 dialogue
+records, 137/137 scenes, 129/129 battle maps, 10/10 save slots, zero errors.
+Decoding every record of every sprite archive also yields zero genuine failures
+(the 239 "bad" scene tiles are 8-byte all-zero placeholders with `w=h=0`, which
+the engine likewise draws as nothing).
+
+The save *primitives* are verified by `JY_TEST_SAVE` (offset writes, zero-filled
+gaps, `setstr` padding, `SaveSMap` round-trip, output file sizes). The full
+`SaveRecord` path has not been run end to end -- it `os.remove()`s the slot
+before rebuilding it in six writes, so **save to an unused slot first**.
+
+Note `SaveRecord` finishes by rewriting the integrity checksum:
+
+    write_content(d_grp, 602800 + 12*slot, leijia(slot))
+
+`leijia` reads through the text-mode shim, so the value written matches what
+`hzbj` will later expect -- saves stay loadable in both this port and the
+original Windows build.
 
 Not yet implemented:
 

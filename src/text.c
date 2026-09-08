@@ -78,10 +78,12 @@ static int to_ucs2(const char *s, size_t slen, int src_charset, uint16_t *out,
 
     while (inleft && outleft) {
         if (iconv(cd, &inbuf, &inleft, &outbuf, &outleft) != (size_t)-1) break;
-        /* Skip one undecodable byte and keep going rather than losing the
-         * whole string - mixed-charset data does occur in this game. */
-        inbuf++;
-        inleft--;
+        /* Consume a whole character, not a single byte: GBK and Big5 lead
+         * bytes are >= 0x81, and skipping one byte desynchronises the stream.
+         * Mixed-charset data does occur in this game. */
+        size_t step = (inleft >= 2 && (unsigned char)*inbuf >= 0x81) ? 2 : 1;
+        inbuf += step;
+        inleft -= step;
         if (outleft >= 2) {
             *(uint16_t *)outbuf = '?';
             outbuf += 2;

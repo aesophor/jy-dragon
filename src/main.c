@@ -222,6 +222,157 @@ int main(int argc, char **argv) {
         jy_log("compat shim failed: %s", lua_tostring(L, -1));
     else jy_log("compat: read_files patched for Windows text-mode semantics");
 
+    /* JY_TEST_SWEEP exercises the whole data surface: every dialogue record,
+     * every scene, every battle map, every save slot. Errors are counted via
+     * pcall rather than aborting, so one bad record does not hide the rest. */
+    if (getenv("JY_TEST_SWEEP")) {
+        static const char *SW =
+            "IncludeFile() SetGlobalConst() SetGlobal()\n"
+            "lib.PicInit(CC.PaletteFile)\n"
+            "local function count(label, n, fn)\n"
+            "  local err, first = 0, nil\n"
+            "  for i = 1, n do\n"
+            "    local ok, e = pcall(fn, i)\n"
+            "    if not ok then err = err + 1 if not first then first = tostring(e) end end\n"
+            "  end\n"
+            "  lib.Debug(string.format('  %-28s %6d tried  %5d errors%s',\n"
+            "            label, n, err, first and ('   first: '..first) or ''))\n"
+            "  return err\n"
+            "end\n"
+            "local total = 0\n"
+            /* dialogue: every record in talk.grp */
+            "local tn = 0\n"
+            "do local f = io.open(CC.TDX, 'rb') tn = math.floor(f:seek('end') / 4) f:close() end\n"
+            "local empty = 0\n"
+            "total = total + count('ReadTalk (all records)', tn - 1, function(i)\n"
+            "  local s = ReadTalk(i)\n"
+            "  if s == nil or #s == 0 then empty = empty + 1 end\n"
+            "end)\n"
+            "lib.Debug('    (of which empty: '..empty..')')\n"
+            /* scenes: load the S/D arrays once, then read every cell of every scene */
+            "lib.PicLoadFile(CC.SMAPPicFile[1], CC.SMAPPicFile[2], 0)\n"
+            "lib.LoadSMap(CC.S_Filename[0], CC.TempS_Filename, 137, CC.SWidth,\n"
+            "             CC.SHeight, CC.D_Filename[0], CC.DNum, 11)\n"
+            "total = total + count('DrawSMap (all 137 scenes)', 137, function(i)\n"
+            "  lib.SetClip(0, 0, 0, 0)\n"
+            "  lib.DrawSMap(i - 1, 32, 32, 0, 0, 0)\n"
+            "end)\n"
+            /* battle maps */
+            "total = total + count('DrawWarMap (all 129 maps)', 129, function(i)\n"
+            "  lib.LoadWarMap(CC.WarMapFile[1], CC.WarMapFile[2], i, 7, CC.WarWidth, CC.WarHeight)\n"
+            "  lib.SetClip(0, 0, 0, 0)\n"
+            "  lib.DrawWarMap(0, 32, 32, 0, 0, -1, -1)\n"
+            "end)\n"
+            /* save slots */
+            "total = total + count('LoadRecord (slots 1..10)', 10, function(i)\n"
+            "  SetGlobal()\n"
+            "  if LoadRecord(i) == -1 then error('slot '..i..' incomplete') end\n"
+            "end)\n"
+            "lib.Debug(total == 0 and '== sweep clean: no errors ==' \n"
+            "          or ('== sweep found '..total..' errors =='))\n";
+        if (luaL_loadstring(L, SW) || lua_pcall(L, 0, 0, 0))
+            jy_log("sweep failed: %s", lua_tostring(L, -1));
+        goto done;
+    }
+
+    /* JY_TEST_SAVEREC="src,dst" runs the real SaveRecord end to end: load slot
+     * src, save to slot dst, reload dst and compare. SaveRecord os.remove()s
+     * the destination and rebuilds it in six writes, so this is the one path
+     * that can destroy a slot. */
+    if (getenv("JY_TEST_SAVEREC")) {
+        static const char *SR =
+            "IncludeFile() SetGlobalConst() SetGlobal()\n"
+            "local a, b = string.match(os.getenv('JY_TEST_SAVEREC'), '(%d+),(%d+)')\n"
+            "a, b = tonumber(a), tonumber(b)\n"
+            "if LoadRecord(a) == -1 then lib.Debug('cannot load slot '..a) return end\n"
+            "lib.Debug(string.format('slot %d loaded: people=%d things=%d scenes=%d wugong=%d',\n"
+            "          a, JY.PersonNum, JY.ThingNum, JY.SceneNum, JY.WugongNum))\n"
+            /* mark two cells so the S/D write path is observable in the output */
+            "lib.SetS(5, 20, 20, 0, 1234)\n"
+            "lib.SetD(5, 7, 3, 567)\n"
+            "SaveRecord(b)\n"
+            /* CharSet must round-trip: Big5 -> GBK -> Big5 is identity */
+            "local raw = '\\179\\112\\187\\187\\164\\108'\n"
+            "local gbk = lib.CharSet(raw, 0)\n"
+            "local back = lib.CharSet(gbk, 1)\n"
+            "local function hex(x) local t={} for i=1,#x do t[#t+1]=string.format('%02x',x:byte(i)) end return table.concat(t,' ') end\n"
+            "lib.Debug('CharSet raw  = '..hex(raw))\n"
+            "lib.Debug('CharSet gbk  = '..hex(gbk))\n"
+            "lib.Debug('CharSet back = '..hex(back)..(back == raw and '   ROUND-TRIP OK' or '   ROUND-TRIP BROKEN'))\n"
+            "lib.Debug('SaveRecord('..b..') completed')\n"
+            "SetGlobal()\n"
+            "if LoadRecord(b) == -1 then lib.Debug('RELOAD FAILED for slot '..b) return end\n"
+            "lib.Debug(string.format('slot %d reloaded: people=%d things=%d scenes=%d wugong=%d',\n"
+            "          b, JY.PersonNum, JY.ThingNum, JY.SceneNum, JY.WugongNum))\n"
+            "lib.Debug('S cell readback = '..lib.GetS(5, 20, 20, 0)..\n"
+            "          '   D field readback = '..lib.GetD(5, 7, 3))\n";
+        if (luaL_loadstring(L, SR) || lua_pcall(L, 0, 0, 0))
+            jy_log("saverec test failed: %s", lua_tostring(L, -1));
+        goto done;
+    }
+
+    /* JY_TEST_SAVE exercises the write primitives the save path relies on:
+     * Byte.savefile at an offset, and SaveSMap. Both are destructive in the
+     * real game (SaveRecord os.remove()s the slot first), so verify them here
+     * rather than on a live save. */
+    if (getenv("JY_TEST_SAVE")) {
+        static const char *S =
+            "IncludeFile() SetGlobalConst() SetGlobal()\n"
+            "local fail = 0\n"
+            "local function check(name, ok)\n"
+            "  lib.Debug((ok and '  PASS  ' or '  FAIL  ')..name)\n"
+            "  if not ok then fail = fail + 1 end\n"
+            "end\n"
+            /* 1. savefile into a fresh file at a non-zero offset, then read back */
+            "os.remove('/tmp/jy_rt.bin')\n"
+            "local a = Byte.create(64)\n"
+            "for i = 0, 31 do Byte.set16(a, i * 2, i * 7 - 100) end\n"
+            "Byte.savefile(a, '/tmp/jy_rt.bin', 128, 64)\n"
+            "local b = Byte.create(64)\n"
+            "Byte.loadfile(b, '/tmp/jy_rt.bin', 128, 64)\n"
+            "local same = true\n"
+            "for i = 0, 31 do if Byte.get16(a, i*2) ~= Byte.get16(b, i*2) then same = false end end\n"
+            "check('Byte.savefile/loadfile round-trip at offset 128', same)\n"
+            /* 2. writing at an offset past EOF must zero-fill, not corrupt */
+            "local c = Byte.create(8)\n"
+            "Byte.loadfile(c, '/tmp/jy_rt.bin', 0, 8)\n"
+            "local zero = true\n"
+            "for i = 0, 3 do if Byte.get16(c, i*2) ~= 0 then zero = false end end\n"
+            "check('gap before offset is zero-filled', zero)\n"
+            /* 3. strings: setstr/getstr with the field width before the string */
+            "local d = Byte.create(20)\n"
+            "Byte.setstr(d, 4, 10, 'hello')\n"
+            "check('setstr/getstr', Byte.getstr(d, 4, 10) == 'hello')\n"
+            "check('setstr pads with NUL', Byte.get16(d, 14) == 0)\n"
+            /* 4. SaveSMap round-trip: mutate a cell, save to temp, reload, compare */
+            "lib.LoadSMap(CC.S_Filename[0], CC.TempS_Filename, 137, CC.SWidth,\n"
+            "             CC.SHeight, CC.D_Filename[0], CC.DNum, 11)\n"
+            "local o0 = lib.GetS(5, 20, 20, 0)\n"
+            "local od = lib.GetD(5, 7, 3)\n"
+            "lib.SetS(5, 20, 20, 0, 1234)\n"
+            "lib.SetD(5, 7, 3, 567)\n"
+            "os.remove('/tmp/jy_s.grp') os.remove('/tmp/jy_d.grp')\n"
+            "lib.SaveSMap('/tmp/jy_s.grp', '/tmp/jy_d.grp')\n"
+            "lib.LoadSMap('/tmp/jy_s.grp', CC.TempS_Filename, 137, CC.SWidth,\n"
+            "             CC.SHeight, '/tmp/jy_d.grp', CC.DNum, 11)\n"
+            "check('SaveSMap preserves a written S cell', lib.GetS(5, 20, 20, 0) == 1234)\n"
+            "check('SaveSMap preserves a written D field', lib.GetD(5, 7, 3) == 567)\n"
+            "check('SaveSMap preserves untouched neighbours',\n"
+            "      lib.GetS(5, 21, 20, 0) == lib.GetS(5, 21, 20, 0))\n"
+            /* 5. the saved files must be the same size as the originals */
+            "local function size(p) local f = io.open(p, 'rb') if not f then return -1 end\n"
+            "  local n = f:seek('end') f:close() return n end\n"
+            "check('s.grp size matches allsin.grp',\n"
+            "      size('/tmp/jy_s.grp') == size(CC.S_Filename[0]))\n"
+            "check('d.grp size matches alldef.grp',\n"
+            "      size('/tmp/jy_d.grp') == size(CC.D_Filename[0]))\n"
+            "lib.Debug(fail == 0 and '== all save-path checks passed =='\n"
+            "          or ('== '..fail..' save-path checks FAILED =='))\n";
+        if (luaL_loadstring(L, S) || lua_pcall(L, 0, 0, 0))
+            jy_log("save test failed: %s", lua_tostring(L, -1));
+        goto done;
+    }
+
     /* JY_TEST_WAR=<n> loads battle map n and renders it. */
     if (getenv("JY_TEST_WAR")) {
         static const char *W =
