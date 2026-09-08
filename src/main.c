@@ -222,6 +222,28 @@ int main(int argc, char **argv) {
         jy_log("compat shim failed: %s", lua_tostring(L, -1));
     else jy_log("compat: read_files patched for Windows text-mode semantics");
 
+    /* JY_TEST_FADE checks ShowSlow's end states and timing. */
+    if (getenv("JY_TEST_FADE")) {
+        static const char *F =
+            "IncludeFile() SetGlobalConst() SetGlobal()\n"
+            "lib.SetClip(0, 0, 0, 0)\n"
+            "lib.FillColor(0, 0, CC.ScreenW, CC.ScreenH, 0x3060C0)\n"
+            "lib.DrawStr(60, 60, 'fade test', 0xECECEC, 40, CC.FontName, 0, 0)\n"
+            "lib.ShowSurface()\n"
+            "SNAP('fade_before')\n"
+            "local t = lib.GetTime()\n"
+            "lib.ShowSlow(5, 0)\n"
+            "lib.Debug('fade IN  (5ms x 33 steps) took '..(lib.GetTime() - t)..'ms')\n"
+            "SNAP('fade_in')\n"
+            "t = lib.GetTime()\n"
+            "lib.ShowSlow(5, 1)\n"
+            "lib.Debug('fade OUT (5ms x 33 steps) took '..(lib.GetTime() - t)..'ms')\n"
+            "SNAP('fade_out')\n";
+        if (luaL_loadstring(L, F) || lua_pcall(L, 0, 0, 0))
+            jy_log("fade test failed: %s", lua_tostring(L, -1));
+        goto done;
+    }
+
     /* JY_TEST_SWEEP exercises the whole data surface: every dialogue record,
      * every scene, every battle map, every save slot. Errors are counted via
      * pcall rather than aborting, so one bad record does not hide the rest. */

@@ -74,6 +74,7 @@ Environment variables, for automated runs:
 | `JY_TEST_SAVE=1` | round-trip the save write primitives (`Byte.savefile`, `SaveSMap`) |
 | `JY_TEST_SAVEREC=a,b` | run the real `SaveRecord` end to end: load slot a, save to slot b, reload |
 | `JY_TEST_SWEEP=1` | exercise the whole data surface: every dialogue record, scene, battle map and save slot |
+| `JY_TEST_FADE=1` | check `ShowSlow`'s end states and timing |
 
 On exit the engine prints a census of every `lib.*` function the run needed but
 that isn't implemented yet, ordered by call count — that list is the to-do list.
@@ -216,10 +217,29 @@ original Windows build.
 
 Not yet implemented:
 
-- `ShowSlow`'s gradual fade (presents immediately)
 - `DrawWarMap`'s rarer modes are approximated -- see below
 - `DrawSMap` is written but only exercised by save slots that start in a scene
 - `PlayMPEG` is a permanent stub -- no script calls it
+
+### ShowSlow (recovered, verified)
+
+`lib.ShowSlow(msPerStep, mode)` is a fixed **33-step** fade (counter 32..0), not
+a step count -- the argument is milliseconds per step, so `ShowSlow(50, 0)` runs
+for ~1.7s. Each step fills the screen black, blits a snapshot of the pre-fade
+framebuffer over it at `alpha = counter * 8` (clamped to 255), presents, and
+delays so the step lasts at least `msPerStep`.
+
+| mode | counter | alpha | effect |
+|---|---|---|---|
+| 0 | counts up | 0..255 | fade **in** from black |
+| non-zero | counts down | 255..0 | fade **out** to black |
+
+End states verified by `JY_TEST_FADE`: fade-in finishes at the original image
+(44.0% mean brightness, unchanged), fade-out at pure black (0.0%).
+
+Because each step presents, very small `msPerStep` values are bounded by the
+display rather than the delay (5ms/step measured ~12ms/step). Visually
+identical; only sub-frame fades run slower than the original.
 
 ### Battle map layout (recovered, verified)
 

@@ -40,6 +40,8 @@ void         jy_present(void); /* commit the framebuffer (ShowSurface/ShowSlow) 
 void         jy_repaint(void); /* redraw the last committed frame */
 SDL_Surface *jy_capture(void); /* read back what the window shows */
 void         jy_fill_rect(int x1, int y1, int x2, int y2, uint32_t rgb, int alpha);
+void         jy_fill_rect_raw(int x1, int y1, int x2, int y2, uint32_t rgb);
+void         jy_show_slow(int ms_per_step, int mode);
 void         jy_draw_rect(int x1, int y1, int x2, int y2, uint32_t rgb);
 void         jy_set_clip(int x1, int y1, int x2, int y2);
 void         jy_pump_events(void);

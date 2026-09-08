@@ -144,10 +144,9 @@ static int l_ShowSurface(lua_State *L) {
     return 0;
 }
 
-/* ShowSlow(steps, mode) - the game's fade/present transition. Presenting once
- * is visually correct-ish; the gradual fade is a TODO. */
+/* ShowSlow(msPerStep, mode) -- 33-step fade; mode 0 in, non-zero out */
 static int l_ShowSlow(lua_State *L) {
-    jy_present();
+    jy_show_slow(argi(L, 1, 0), argi(L, 2, 0));
     return 0;
 }
 

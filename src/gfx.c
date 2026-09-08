@@ -109,6 +109,61 @@ static int map_key(SDL_Keycode k) {
     }
 }
 
+/* lib.ShowSlow(msPerStep, mode) -- ported from sub_407E70.
+ *
+ * A fixed 33 steps (counter 32..0). Each step fills the screen black, blits a
+ * snapshot of the pre-fade framebuffer over it at alpha = counter*8 (clamped
+ * to 255), presents, and delays so the step lasts at least msPerStep.
+ *
+ *   mode == 0  counter counts UP   -> alpha 0..255   fade IN from black
+ *   mode != 0  counter counts DOWN -> alpha 255..0   fade OUT to black
+ *
+ * So the argument is milliseconds per step, not a step count: ShowSlow(50, 0)
+ * is 33 * 50ms = ~1.7s.
+ */
+#define FADE_STEPS 32
+
+void jy_show_slow(int ms_per_step, int mode) {
+    SDL_Surface *snap = SDL_CreateSurface(g_e.w, g_e.h, SDL_PIXELFORMAT_ARGB8888);
+    if (!snap) {
+        jy_present();
+        return;
+    }
+
+    /* Copy the whole framebuffer: SDL_BlitSurface clips by the SOURCE clip
+     * rect too, so lift it for the capture (same reason as SaveSur). */
+    SDL_Rect saved = g_e.clip, full = {0, 0, g_e.w, g_e.h};
+    SDL_SetSurfaceClipRect(g_e.screen, &full);
+    SDL_BlitSurface(g_e.screen, NULL, snap, NULL);
+    SDL_SetSurfaceClipRect(g_e.screen, &saved);
+
+    SDL_SetSurfaceBlendMode(snap, SDL_BLENDMODE_BLEND);
+
+    for (int i = 0; i <= FADE_STEPS; i++) {
+        int counter = mode ? (FADE_STEPS - i) : i;
+        int alpha   = counter * 8;
+        if (alpha > 255) alpha = 255;
+
+        uint64_t t0 = SDL_GetTicks();
+
+        SDL_SetSurfaceClipRect(g_e.screen, &full);
+        jy_fill_rect_raw(0, 0, g_e.w - 1, g_e.h - 1, 0x000000);
+        SDL_SetSurfaceAlphaMod(snap, (Uint8)alpha);
+        SDL_BlitSurface(snap, NULL, g_e.screen, NULL);
+        SDL_SetSurfaceClipRect(g_e.screen, &saved);
+
+        jy_present();
+
+        uint64_t elapsed = SDL_GetTicks() - t0;
+        if (ms_per_step > 0 && (uint64_t)ms_per_step > elapsed)
+            SDL_Delay((Uint32)(ms_per_step - elapsed));
+        jy_pump_events();
+        if (!g_e.running) break; /* window closed mid-fade */
+    }
+    SDL_SetSurfaceAlphaMod(snap, 255);
+    SDL_DestroySurface(snap);
+}
+
 /* Capture what the window shows. RenderReadPixels must run BEFORE
  * RenderPresent -- after presenting, the backbuffer is undefined and reads
  * back blank, which is what made earlier snapshots look empty. */
@@ -168,6 +223,21 @@ static inline uint32_t blend(uint32_t dst, uint32_t src, int a) {
     uint32_t g =
         (((src & 0x0000FF00u) * a + (dst & 0x0000FF00u) * (255 - a)) >> 8) & 0x0000FF00u;
     return 0xFF000000u | rb | g;
+}
+
+/* Unclipped opaque fill, used by the fade which is inherently full-screen. */
+void jy_fill_rect_raw(int x1, int y1, int x2, int y2, uint32_t rgb) {
+    if (x1 < 0) x1 = 0;
+    if (y1 < 0) y1 = 0;
+    if (x2 >= g_e.w) x2 = g_e.w - 1;
+    if (y2 >= g_e.h) y2 = g_e.h - 1;
+    uint32_t  src   = 0xFF000000u | (rgb & 0x00FFFFFFu);
+    int       pitch = g_e.screen->pitch / 4;
+    uint32_t *px    = (uint32_t *)g_e.screen->pixels;
+    for (int y = y1; y <= y2; y++) {
+        uint32_t *row = px + (size_t)y * pitch;
+        for (int x = x1; x <= x2; x++) row[x] = src;
+    }
 }
 
 void jy_fill_rect(int x1, int y1, int x2, int y2, uint32_t rgb, int alpha) {
