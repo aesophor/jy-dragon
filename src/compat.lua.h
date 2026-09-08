@@ -27,4 +27,33 @@ static const char *JY_COMPAT_LUA =
     "  if z then d = string.sub(d, 1, z - 1) end\n"
     "  d = string.gsub(d, '\\r\\n', '\\n')\n"
     "  return string.sub(d, 1, len)\n"
+    "end\n"
+    /* ---------------------------------------------------------------------- *
+ * CC.Frame is the main loop's target milliseconds per iteration, and it
+ * paces everything time-based -- NPC animation advances every 4th
+ * iteration (DtoSMap), so a wrong value scales animation speed directly.
+ *
+ * LoadRecord reads it from DATA/CircleNum at offset 2200 + 2*slot, but the
+ * mod's own layout puts slot 10's 20-byte timestamp at 2000 + 20*10 =
+ * 2200, overlapping the frame bytes for slots 0..9. Slot 1 therefore reads
+ * "02" out of the middle of "'2025-01-26 22:29:37" and gets 2.
+ *
+ * tonumber() succeeds on that garbage, so the game's own `else CC.Frame =
+ * 30` fallback never triggers. The original survived because it was slow
+ * enough to be compute-bound near the intended rate; this engine runs an
+ * iteration in ~8ms, so the loop free-ran at ~120/s and NPC animation was
+ * about 4x too fast.
+ *
+ * Clamp to the three speeds the settings menu actually offers
+ * (原速 30 / 快速 20 / 极快 10), defaulting to the game's own default.
+ * ---------------------------------------------------------------------- */
+    "local _LoadRecord = LoadRecord\n"
+    "function LoadRecord(n)\n"
+    "  local r = _LoadRecord(n)\n"
+    "  local f = CC and CC.Frame\n"
+    "  if f ~= 30 and f ~= 20 and f ~= 10 then\n"
+    "    CC.Frame = 30\n"
+    "    lib.Debug('compat: CC.Frame was '..tostring(f)..' (corrupt CircleNum), using 30')\n"
+    "  end\n"
+    "  return r\n"
     "end\n";

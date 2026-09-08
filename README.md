@@ -75,6 +75,7 @@ Environment variables, for automated runs:
 | `JY_TEST_SAVEREC=a,b` | run the real `SaveRecord` end to end: load slot a, save to slot b, reload |
 | `JY_TEST_SWEEP=1` | exercise the whole data surface: every dialogue record, scene, battle map and save slot |
 | `JY_TEST_FADE=1` | check `ShowSlow`'s end states and timing |
+| `JY_LOOPSTATS=1` | log the real main-loop rate and resulting NPC animation fps once a second |
 
 On exit the engine prints a census of every `lib.*` function the run needed but
 that isn't implemented yet, ordered by call count — that list is the to-do list.
@@ -363,6 +364,18 @@ Both files hold 137 scenes, matching the 137 `Scene_S` records in a save.
 - `VK_*` in `jyconst.lua` are SDL2/SDL3 keycodes verbatim, so no key mapping is
   needed (`VK_F1 = 1073741882 = SDLK_F1`).
 - Colours arrive as `0xRRGGBB` ints (`RGB()` in `jymain.lua`).
+- **`CC.Frame` arrives corrupt and must be clamped.** It is the main loop's
+  target ms per iteration and paces everything time-based -- NPC animation
+  advances every 4th iteration (`DtoSMap`). `LoadRecord` reads it from
+  `DATA/CircleNum` at `2200 + 2*slot`, but the mod puts slot 10's 20-byte
+  timestamp at `2000 + 20*10 = 2200`, overlapping the frame bytes for slots
+  0..9. Slot 1 reads `"02"` out of `'2025-01-26 22:29:37` and gets 2.
+  `tonumber` succeeds on that, so the game's own `else CC.Frame = 30` fallback
+  never fires. The original survived by being slow enough to be compute-bound
+  near the intended rate; this engine runs an iteration in ~8ms, so the loop
+  free-ran at 120/s and NPC animation was 4x too fast. `src/compat.lua.h`
+  clamps it to the three speeds the settings menu offers (30/20/10).
+  Measure with `JY_LOOPSTATS=1`.
 - **`lib.SetClip` must set the clip on the SDL surface, not just in engine
   state.** Fills and glyphs can honour a clip by hand, but sprites, pictures
   and `LoadSur` go through `SDL_BlitSurface`, which respects only the

@@ -28,7 +28,55 @@ static int sur_alloc(SDL_Surface *s) {
  * Raising a Lua error is the only way out: the game loop never returns. */
 static double g_deadline = 0;
 
+/* JY_LOOPSTATS=1 samples JY.Mytick once a second. Mytick increments exactly
+ * once per Game_Cycle iteration, and DtoSMap advances an NPC animation frame
+ * every 4th tick, so this measures the real loop rate and the resulting NPC
+ * animation rate rather than inferring it. */
+static void loop_stats(lua_State *L) {
+    static bool     on, checked;
+    static uint64_t next;
+    static double   prev_tick = -1;
+    if (!checked) {
+        checked = true;
+        on      = getenv("JY_LOOPSTATS") != NULL;
+    }
+    if (!on) return;
+
+    uint64_t now = SDL_GetTicks();
+    if (now < next) return;
+    next = now + 1000;
+
+    lua_getglobal(L, "JY");
+    if (!lua_istable(L, -1)) {
+        lua_pop(L, 1);
+        return;
+    }
+    lua_getfield(L, -1, "Mytick");
+    double t = lua_tonumber(L, -1);
+    lua_pop(L, 2);
+
+    double frame = 0;
+    lua_getglobal(L, "CC");
+    if (lua_istable(L, -1)) {
+        lua_getfield(L, -1, "Frame");
+        frame = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+    }
+    lua_pop(L, 1);
+
+    if (prev_tick >= 0) {
+        double iters = t - prev_tick;
+        jy_log("loop: %.0f iters/s (%.1f ms each) | CC.Frame=%.0f -> expected "
+               "%.1f/s | NPC anim %.1f fps (expected %.1f)",
+               iters, iters > 0 ? 1000.0 / iters : 0.0, frame,
+               frame > 0 ? 1000.0 / frame : 0.0, iters / 4.0,
+               frame > 0 ? 1000.0 / frame / 4.0 : 0.0);
+    }
+    prev_tick = t;
+}
+
 static void check_quit(lua_State *L) {
+    loop_stats(L);
     jy_tick();
     if (!g_e.running) luaL_error(L, "__jy_quit__");
     if (g_deadline > 0 && (double)SDL_GetTicks() > g_deadline) {
