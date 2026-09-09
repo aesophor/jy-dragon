@@ -424,6 +424,39 @@ byte offset in the 342-byte person record, which changes the save layout and
 would need the offset proven unused first; and it would not be worth doing
 for a stat only the orphaned random-mercenary generator ever sets.
 
+## 令狐冲 rendered as 令狐衝
+
+`OEvent1901.lua:5699` -- one literal spells 沖 directly
+(the rest is `fix_merged` in `src/text.c`, not a script edit)
+
+Simplified 冲 merges two Traditional characters, 沖 and 衝, and a
+character-level table has to pick one. `src/s2t_table.h` maps it to 衝, which
+is right for 衝突, 衝動, 豪氣衝天, 怒髮衝冠 -- and wrong for 令狐沖, whom the
+scripts spell 令狐冲.
+
+The game's own data settles it: person 35 in `Ranger.grp` is Big5 令狐沖. The
+data and the dialogue disagreed, and the data is right.
+
+`fix_merged` in `src/text.c` redirects that one character where the
+neighbours identify the name -- preceded by 狐, or followed by 兒 or 哥
+(沖兒, 沖哥). It runs after the table pass and rewrites in place, so it stays
+inside the constraint that kept phrase rules out of the table: nothing is
+inserted or removed, and the character count the scripts compute pixel widths
+from does not move.
+
+Counted across every occurrence in `game/script/`, simulating table + rule:
+**65 become 沖 and 81 stay 衝**, with no false positive in either direction.
+Every 沖 is 令狐沖, 沖兒 or 沖哥; the 衝 side is all verbs and 中衝劍 /
+關衝劍 / 少衝劍. A bare `"冲"` in `MyOEvent.lua:2920` is an entry in a pinyin
+table, where either form is fine.
+
+The one script edit is the exception the render layer cannot reach.
+`OEvent1901.lua:5699` wraps the name mid-word as 令狐*冲身上, and `*` is the
+line separator (`Split(text, "*")`), so 狐 and 冲 arrive in different draw
+calls with no neighbour to match on. That literal spells 沖 directly; it is
+unmapped by the table, so it passes through untouched. (The other wrapped
+occurrence, 令*狐冲, leaves 狐冲 contiguous and the rule catches it.)
+
 ## What stays in src/compat.lua.h
 
 Three shims, none of which are things the mod gets wrong -- editing its source

@@ -98,6 +98,39 @@ static uint16_t s2t(uint16_t cp) {
     return cp;
 }
 
+/* One Simplified character can stand for two Traditional ones, and a
+ * character table has to pick one. 冲 is the case that shows: it merges 沖
+ * and 衝, the table maps it to 衝 -- right for 衝突, 衝動, 豪氣衝天,
+ * 怒髮衝冠 -- and wrong for 令狐沖, whom the scripts write 令狐冲 in about
+ * fifty places.
+ *
+ * The game's own data settles which is correct: person 35 in Ranger.grp is
+ * Big5 令狐沖. So the data and the dialogue disagree, and the data wins.
+ *
+ * Redirect just that character where the neighbours identify the name. This
+ * stays inside the constraint that kept phrase-level rules out of the table
+ * (see s2t_table.h): nothing is inserted or removed, so the character count
+ * the scripts compute pixel widths from does not move.
+ *
+ * 令狐*冲 at OEvent1901.lua:5699 is out of reach here -- '*' is the line
+ * separator, so 狐 and 冲 arrive in different draw calls. That one literal
+ * spells 沖 directly instead.
+ */
+#define CP_HU 0x72D0   /* 狐 */
+#define CP_CHNG 0x885D /* 衝, what the table produced */
+#define CP_CHON 0x6C96 /* 沖, wanted for the name */
+#define CP_ER 0x5152   /* 兒, as in 沖兒 */
+#define CP_GE 0x54E5   /* 哥, as in 沖哥 */
+
+static void fix_merged(uint16_t *s, int n) {
+    for (int i = 0; i < n; i++) {
+        if (s[i] != CP_CHNG) continue;
+        bool name = (i >= 1 && s[i - 1] == CP_HU) ||
+                    (i + 1 < n && (s[i + 1] == CP_ER || s[i + 1] == CP_GE));
+        if (name) s[i] = CP_CHON;
+    }
+}
+
 /* Convert a native-charset string to UCS-2LE. Returns count of code units. */
 static int to_ucs2(const char *s, size_t slen, int src_charset, uint16_t *out,
                    int outmax) {
@@ -127,8 +160,10 @@ static int to_ucs2(const char *s, size_t slen, int src_charset, uint16_t *out,
     iconv_close(cd);
 
     int n = (int)((uint16_t *)outbuf - out);
-    if (g_trad)
+    if (g_trad) {
         for (int i = 0; i < n; i++) out[i] = s2t(out[i]);
+        fix_merged(out, n);
+    }
     return n;
 }
 
