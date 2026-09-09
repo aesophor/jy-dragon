@@ -481,7 +481,20 @@ static int l_PicGetXY(lua_State *L) {
     return 4;
 }
 
-/* LoadPicture(path, x, y) - full-screen art; negative coords mean centre */
+/* The original's window, and so the size the mod's full-screen art is drawn
+ * at: title.png, DEAD.PNG and END.PNG are all exactly 640x480. Art this size
+ * or larger was meant to fill the screen; anything smaller is an overlay
+ * that happens to be centred, and scaling it would blow it up to fill a
+ * window it was never meant to cover. */
+#define ART_FULLSCREEN_W 640
+#define ART_FULLSCREEN_H 480
+
+/* LoadPicture(path, x, y) - full-screen art; negative coords mean centre.
+ *
+ * Negative on BOTH axes plus art at least the original's screen size is the
+ * script asking for "fill the screen with this", so scale it to cover ours.
+ * An explicit position, or a smaller image, still blits 1:1 -- the arguments
+ * keep meaning what they say. */
 static int l_LoadPicture(lua_State *L) {
     const char *path = lua_tostring(L, 1);
     if (!path || !*path) return 0;
@@ -490,7 +503,10 @@ static int l_LoadPicture(lua_State *L) {
         jy_log("LoadPicture: cannot load %s", path);
         return 0;
     }
-    jy_blit_surface(s, argi(L, 2, -1), argi(L, 3, -1));
+    int  x = argi(L, 2, -1), y = argi(L, 3, -1);
+    bool fullscreen = s->w >= ART_FULLSCREEN_W && s->h >= ART_FULLSCREEN_H;
+    if (x < 0 && y < 0 && fullscreen) jy_blit_surface_cover(s);
+    else jy_blit_surface(s, x, y);
     SDL_DestroySurface(s);
     return 0;
 }

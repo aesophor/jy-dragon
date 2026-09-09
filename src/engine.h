@@ -64,6 +64,7 @@ void jy_text_set_traditional(bool on);
 bool         jy_load_palette(const char *path);
 SDL_Surface *jy_load_png(const char *path);
 void         jy_blit_surface(SDL_Surface *s, int x, int y);
+void         jy_blit_surface_cover(SDL_Surface *s); /* scale to fill the window */
 void         jy_png_register(int slot, const char *dir, int count, int fit_w, int fit_h);
 SDL_Surface *jy_png_get(int slot, int id); /* id is pre-doubled; index = id/2 */
 

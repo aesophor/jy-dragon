@@ -55,15 +55,19 @@ The original anchors the menu to the window:
     CC.StartMenuY = CC.ScreenH - 3 * (CC.StartMenuFontSize + CC.RowPixel) - 20
 
 which leaves the three rows 20px from the bottom. That was right at 640x480,
-where the art filled every pixel. The art is still 640x480 and `LoadPicture`
-centres it, so in a 1220x700 window it spans y 110..590 while the menu block
-(554..680) hung 90px past it onto bare black.
+where the art filled every pixel; at 1220x700 the menu sat tight against the
+window edge.
 
-Two more row heights puts the block at 470..596 -- its bottom edge level with
-the art's. The term scales with the font, so it holds at other window sizes
-instead of being a magic number for this one. Three `请稍候...` boxes share
-`CC.StartMenuY` and move with it, which is what you want: same screen, same
-place.
+Two more row heights lifts it clear. The term scales with the font, so it
+holds at other window sizes instead of being a magic number for this one.
+Three `请稍候...` boxes share `CC.StartMenuY` and move with it, which is what
+you want: same screen, same place.
+
+The original reason for this edit was narrower and no longer applies: the
+art used to be blitted 1:1 and centred, spanning only y 110..590, so the
+menu block hung 90px past it onto bare black. `l_LoadPicture` now scales
+full-screen art to cover the window, so there is no bare black to hang onto
+-- but 20px from the bottom edge is still too tight, so the edit stays.
 
 ## Returning to the title mid-game kept the map and the music
 
@@ -79,8 +83,13 @@ menu's 离开游戏 calls `StartMenu()` directly (`1950`). Two things followed.
 the live map. `Menu_Exit` does not touch `JY.Status`, so the title art was
 drawn over the scene you left -- and `LoadPicture` does not clear either
 (`sub_407CB0` is `IMG_Load`, `SDL_DisplayFormat`, centre, `SDL_UpperBlit`,
-nothing else), so at 1220x700 the uncovered border still showed it. Invisible
-in the original, which ran at the art's own 640x480.
+nothing else), so the uncovered border still showed it. Invisible in the
+original, which ran at the art's own 640x480.
+
+Cover-scaling the art (`l_LoadPicture`) now hides this symptom by painting
+every pixel, but the edit stays: relying on the artwork to do the clearing
+would break again on art with transparency, or on a window the art cannot
+cover. Clearing is `Cls()`'s job and this is how you ask it to do it.
 
 Setting the status lets the game's own `Cls()` do the clearing. Nothing
 downstream reads the value this overwrites: every `StartMenu` branch that

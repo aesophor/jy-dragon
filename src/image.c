@@ -98,6 +98,33 @@ void jy_blit_surface(SDL_Surface *s, int x, int y) {
     SDL_BlitSurface(s, NULL, g_e.screen, &dst);
 }
 
+/* Scale a full-screen picture up to cover the window, centred, cropping
+ * whatever falls outside.
+ *
+ * sub_407CB0 blits the art 1:1 and centres it. That covered every pixel at
+ * the art's own 640x480, so the original never had to scale; in a larger
+ * window the uncovered border is bare black.
+ *
+ * Cover, not stretch: the art is 4:3 and the window generally is not, so
+ * stretching to the exact window size would widen the calligraphy by a
+ * third. Uniform scale keeps its proportions and the overflow is cropped
+ * evenly off two sides -- on title.png, which is black outside the centred
+ * logo, the crop takes only black.
+ *
+ * LINEAR to match the portrait scaling in jy_png_get; the art is a rendered
+ * image with soft gradients, not the pixel art the NEAREST texture filter is
+ * there for.
+ */
+void jy_blit_surface_cover(SDL_Surface *s) {
+    if (!s || s->w <= 0 || s->h <= 0) return;
+    double kx = (double)g_e.w / s->w, ky = (double)g_e.h / s->h;
+    double k = kx > ky ? kx : ky;
+    int    w = (int)(s->w * k + 0.5), h = (int)(s->h * k + 0.5);
+
+    SDL_Rect dst = {(g_e.w - w) / 2, (g_e.h - h) / 2, w, h};
+    SDL_BlitSurfaceScaled(s, NULL, g_e.screen, &dst, SDL_SCALEMODE_LINEAR);
+}
+
 /* ------------------------------------------------------------------------ */
 /* PNG slot registry (LoadPNGPath / LoadPNG / GetPNGXY)                      */
 /*                                                                          */
