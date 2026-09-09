@@ -1,5 +1,8 @@
-/* Windows text-mode compatibility shim, injected after the game's scripts load
- * and before JY_Main runs.
+/* Post-load shim, injected after the game's scripts load and before JY_Main
+ * runs. This is where behaviour changes go, so script/ stays a faithful
+ * decompilation.
+ *
+ * 1. Windows text-mode read_files semantics, which the save checksum needs.
  *
  * The mod's save-integrity checksum (leijia -> hzbj in jymain.lua) reads the
  * save file through read_files(), which uses io.input() -- TEXT mode on
@@ -56,4 +59,30 @@ static const char *JY_COMPAT_LUA =
     "    lib.Debug('compat: CC.Frame was '..tostring(f)..' (corrupt CircleNum), using 30')\n"
     "  end\n"
     "  return r\n"
+    "end\n"
+    /* ---------------------------------------------------------------------- *
+     * Title backdrop: one title.png instead of a random pick of four.
+     *
+     * loadpng1() rolls math.random(5) over CC.FirstFile1..4 (jymain.lua:140),
+     * and MyOEvent's two leaderboard screens draw CC.FirstFile1 directly. All
+     * five sites read the constants, so pointing the constants at title.png
+     * covers them without touching the decompiled scripts.
+     *
+     * The hook goes through IncludeFile rather than SetGlobalConst: the
+     * latter lives in jyconst.lua, which IncludeFile is what loads, so it
+     * does not exist yet when this shim runs. Falls back to the original four
+     * if title.png is absent, so a game/ without it still shows a title.
+     * ---------------------------------------------------------------------- */
+    "local _IncludeFile = IncludeFile\n"
+    "function IncludeFile()\n"
+    "  _IncludeFile()\n"
+    "  local _SetGlobalConst = SetGlobalConst\n"
+    "  function SetGlobalConst()\n"
+    "    _SetGlobalConst()\n"
+    "    local t = CONFIG.PicturePath .. 'title.png'\n"
+    "    local f = io.open(t, 'rb')\n"
+    "    if not f then return end\n"
+    "    f:close()\n"
+    "    CC.FirstFile1, CC.FirstFile2, CC.FirstFile3, CC.FirstFile4 = t, t, t, t\n"
+    "  end\n"
     "end\n";
