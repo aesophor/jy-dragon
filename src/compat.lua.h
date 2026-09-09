@@ -87,6 +87,31 @@ static const char *JY_COMPAT_LUA =
     "  end\n"
     "end\n"
     /* ---------------------------------------------------------------------- *
+     * Lift the title menu off the bottom edge.
+     *
+     * jyconst.lua:2761 anchors it to the window:
+     *   CC.StartMenuY = ScreenH - 3 * (StartMenuFontSize + RowPixel) - 20
+     * which leaves the three rows sitting 20px from the bottom. That was right
+     * at 640x480, where the art filled every pixel. The art is still 640x480
+     * and LoadPicture centres it, so in a 1220x700 window it spans y 110..590
+     * and the menu block (554..680) hung 90px past it onto bare black.
+     *
+     * Raising it by two row heights puts the block at 470..596 -- its bottom
+     * edge level with the art's -- and the term scales with the font, so it
+     * holds at other window sizes instead of being a magic number for this
+     * one. Three "请稍候..." boxes share CC.StartMenuY and move with it, which
+     * is what you want: same screen, same place.
+     * ---------------------------------------------------------------------- */
+    "local _IncludeFile2 = IncludeFile\n"
+    "function IncludeFile()\n"
+    "  _IncludeFile2()\n"
+    "  local _SGC = SetGlobalConst\n"
+    "  function SetGlobalConst()\n"
+    "    _SGC()\n"
+    "    CC.StartMenuY = CC.StartMenuY - 2 * (CC.StartMenuFontSize + CC.RowPixel)\n"
+    "  end\n"
+    "end\n"
+    /* ---------------------------------------------------------------------- *
      * Blank the screen behind the title menu.
      *
      * StartMenu opens with Cls(), which dispatches on JY.Status: only the
