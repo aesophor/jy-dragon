@@ -234,12 +234,12 @@ them from.
 `hzmb.dat` is the original engine's GBK/Big5 conversion table, loaded verbatim
 by `lib.CharSet`; it comes from the install root, next to `Dragon.exe`.
 
-`font/` holds the faces the game can use, and `CONFIG.FontName` selects one.
-It points at **`jylegend16.ttf`**, the 1996 game's own bitmap font converted to
-an outline TTF -- see
+`font/` holds the one face the game uses, named by `CONFIG.FontName`:
+**`jylegend16.ttf`**, the 1996 game's own bitmap font converted to an outline
+TTF -- see
 [The 1996 bitmap font](REVERSE.md#the-1996-bitmap-font-recovered-verified).
-`simsun.ttf` (SimSun, 宋体) is the fallback if you want a modern face;
-switching is a one-line edit. SimSun covers every character the game can
-display, checked against `script/`, `talk.grp` and `Ranger.grp` both before and
-after the Traditional conversion; the bitmap font covers all but 226, listed
-in REVERSE.md.
+It covers every character the game can reach except 226, listed there.
+
+There is no fallback. `get_face()` logs `DrawStr: cannot open font` and returns
+NULL, which means no text at all, so point `CONFIG.FontName` only at a file
+that exists.
