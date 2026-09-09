@@ -209,7 +209,7 @@ function StartMenu()
 		local var_9_3 = (CC.ScreenW - 38.5 * CC.FontSmall3 - 2 * CC.MenuBorderPixel) / 3
 		local var_9_4 = (CC.ScreenH - 1 * (CC.FontSmall3 + CC.RowPixel)) / 3
 
-		DrawStrBox(var_9_3, var_9_4, string.format("%-8s %-8s %-2s %6s %14s %-4s %-10s %-10s", "  存档", "姓名", "年龄", "门派", "", "位置", "难度", "存档时间        "), C_ORANGE, CC.FontSmall3, C_GOLD)  -- [port] see docs/PATCHES.md
+		DrawStrBox(var_9_3, var_9_4, string.format("%-8s %-8s %-2s %6s %14s %-4s %-10s %-10s", "  存档", "姓名", "年龄", "门派", "", "位置", "难度", "存档时间          "), C_ORANGE, CC.FontSmall3, C_GOLD)  -- [port] see docs/PATCHES.md
 
 		local var_9_5 = SaveList()
 
@@ -1957,7 +1957,7 @@ function Menu_SaveRecord()
 	local var_38_0 = (CC.ScreenW - 38.5 * CC.FontSmall3 - 2 * CC.MenuBorderPixel) / 3
 	local var_38_1 = (CC.ScreenH - 1 * (CC.FontSmall3 + CC.RowPixel)) / 3
 
-	DrawStrBox(var_38_0, var_38_1, string.format("%-8s %-8s %-2s %6s %14s %-4s %-10s %-10s", "  存档", "姓名", "年龄", "门派", "", "位置", "难度", "存档时间        "), C_ORANGE, CC.FontSmall3, C_GOLD)  -- [port] see docs/PATCHES.md
+	DrawStrBox(var_38_0, var_38_1, string.format("%-8s %-8s %-2s %6s %14s %-4s %-10s %-10s", "  存档", "姓名", "年龄", "门派", "", "位置", "难度", "存档时间          "), C_ORANGE, CC.FontSmall3, C_GOLD)  -- [port] see docs/PATCHES.md
 
 	local var_38_2 = SaveList()
 
@@ -1975,7 +1975,7 @@ function Menu_ReadRecord()
 	local var_39_0 = (CC.ScreenW - 38.5 * CC.FontSmall3 - 2 * CC.MenuBorderPixel) / 3
 	local var_39_1 = (CC.ScreenH - 1 * (CC.FontSmall3 + CC.RowPixel)) / 3
 
-	DrawStrBox(var_39_0, var_39_1, string.format("%-8s %-8s %-2s %6s %14s %-4s %-10s %-10s", "  存档", "姓名", "年龄", "门派", "", "位置", "难度", "存档时间        "), C_ORANGE, CC.FontSmall3, C_GOLD)  -- [port] see docs/PATCHES.md
+	DrawStrBox(var_39_0, var_39_1, string.format("%-8s %-8s %-2s %6s %14s %-4s %-10s %-10s", "  存档", "姓名", "年龄", "门派", "", "位置", "难度", "存档时间          "), C_ORANGE, CC.FontSmall3, C_GOLD)  -- [port] see docs/PATCHES.md
 
 	local var_39_2 = SaveList()
 

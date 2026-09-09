@@ -158,6 +158,18 @@ went from **-17px to +12px**, with the box edge fixed at x=1186.5.
 The header's 姓名 field goes `%-10s` to `%-8s`, one byte narrower than the
 rows' as it already was, so the labels stay over their columns.
 
+The header is a separate box, drawn by `DrawStrBox` rather than `ShowMenu`,
+and its right border sat 30px inside the rows' -- it measured 77 bytes to
+their 79. `DrawStrBox` uses the identical width model, and both boxes start
+at the same x (the two call sites compute it from the same expression), so
+padding the last label, `存档时间`, with two more trailing spaces brings the
+two borders flush. Trailing spaces on the final field move no label.
+
+That leaves exactly 1px, which no string length can close: `DrawStrBox` ends
+its box at `x + width - 1` (`4694`) and `ShowMenu` at `x + width` (`4981`).
+Same width, one pixel apart by convention. Closing it would mean changing
+`DrawStrBox` for every caller in the game, which is not worth one pixel.
+
 ## What stays in src/compat.lua.h
 
 Three shims, none of which are things the mod gets wrong -- editing its source
