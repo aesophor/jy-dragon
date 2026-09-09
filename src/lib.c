@@ -1,8 +1,8 @@
 /* The `lib` table: the 46 C functions the game's Lua calls.
  *
  * Names, arity and addresses were recovered from the unpacked engine
- * (_re/engine_api.md, _re/lua_api.txt). Anything not yet implemented records
- * itself via jy_todo() so a run tells us exactly what to build next.
+ * (_re/engine_api.md, _re/lua_api.txt). All 46 are implemented except
+ * PlayMPEG, which no script calls.
  */
 #include "engine.h"
 #include <iconv.h>
@@ -637,15 +637,13 @@ static int l_SetD(lua_State *L) {
     return 0;
 }
 
-/* ---- not yet implemented ------------------------------------------------ */
-#define STUB(name, nret)                                                                 \
-    static int l_##name(lua_State *L) {                                                  \
-        jy_todo(#name, lua_gettop(L));                                                   \
-        for (int i = 0; i < (nret); i++) lua_pushnumber(L, 0);                           \
-        return (nret);                                                                   \
-    }
-
-STUB(PlayMPEG, 0) /* never called by the scripts */
+/* The one entry point with no implementation. No script references it, so
+ * this is registered only to keep the table complete; the log line is there in
+ * case that ever stops being true. */
+static int l_PlayMPEG(lua_State *L) {
+    jy_log("PlayMPEG: not implemented (%d args)", lua_gettop(L));
+    return 0;
+}
 
 static const luaL_Reg LIB_FUNCS[] = {/* implemented */
                                      {"Debug", l_Debug},

@@ -27,45 +27,6 @@ void jy_log(const char *fmt, ...) {
     }
 }
 
-/* ---- unimplemented-call census ----------------------------------------- */
-#define MAX_TODO 64
-typedef struct {
-    const char *name;
-    int         calls;
-    int         nargs;
-} TodoEnt;
-static TodoEnt g_todo[MAX_TODO];
-static int     g_ntodo;
-
-void jy_todo(const char *fn, int nargs) {
-    for (int i = 0; i < g_ntodo; i++)
-        if (g_todo[i].name == fn || strcmp(g_todo[i].name, fn) == 0) {
-            g_todo[i].calls++;
-            if (nargs > g_todo[i].nargs) g_todo[i].nargs = nargs;
-            return;
-        }
-    if (g_ntodo < MAX_TODO) g_todo[g_ntodo++] = (TodoEnt){fn, 1, nargs};
-}
-
-void jy_todo_report(void) {
-    if (!g_ntodo) {
-        jy_log("\n== no unimplemented lib.* calls ==");
-        return;
-    }
-    /* most-called first: that is the order worth implementing them in */
-    for (int i = 0; i < g_ntodo; i++)
-        for (int j = i + 1; j < g_ntodo; j++)
-            if (g_todo[j].calls > g_todo[i].calls) {
-                TodoEnt t = g_todo[i];
-                g_todo[i] = g_todo[j];
-                g_todo[j] = t;
-            }
-    jy_log("\n== unimplemented lib.* calls, by frequency ==");
-    for (int i = 0; i < g_ntodo; i++)
-        jy_log("  %-16s %6d calls   (max %d args)", g_todo[i].name, g_todo[i].calls,
-               g_todo[i].nargs);
-}
-
 /* SNAP(tag): dump the software framebuffer to /tmp/erase_<tag>.bmp */
 static int l_snap(lua_State *L) {
     const char *tag = lua_tostring(L, 1);
@@ -652,7 +613,6 @@ done:
         }
         jy_log("frames presented: %d", jy_present_count());
     }
-    jy_todo_report();
     jy_audio_shutdown();
     jy_text_shutdown();
     jy_gfx_shutdown();

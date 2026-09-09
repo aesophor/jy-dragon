@@ -120,7 +120,5 @@ void jy_set_d(int scene, int index, int field, int v);
 
 /* ---- misc --------------------------------------------------------------- */
 void jy_log(const char *fmt, ...);
-void jy_todo(const char *fn, int nargs); /* record an unimplemented call */
-void jy_todo_report(void);
 
 #endif
