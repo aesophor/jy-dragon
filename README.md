@@ -31,7 +31,7 @@ every other path comes from `CONFIG.CurrentPath = "./"` in `CONFIG.lua`:
 | `PicturePath` | `./pic/` | extracted `PIC/` |
 | `SoundPath` | `./sound/` | original `SOUND/` |
 | `ScriptPath` | `./script/` | decompiled `script_source/` |
-| `FontName` | `./font/font.ttc` | original `FONT/` |
+| `FontName` | `./font/simsun.ttf` | original `FONT/` |
 | `CC.SavePath` | `./save/` (via `data/../save/`) | original `save/` |
 
 So a self-contained bundle is:
@@ -724,6 +724,16 @@ them from.
 
 `hzmb.dat` is the original engine's GBK/Big5 conversion table, loaded verbatim
 by `lib.CharSet`; it comes from the install root, next to `Dragon.exe`.
+
+`font/` holds both faces the game can use. `CONFIG.FontName` selects one, and
+it points at **`simsun.ttf`** (SimSun, 宋体 -- the Ming/serif look); the
+original's `font.ttc` (KaiTi, 楷体 -- brush script) is still there, so
+switching back is a one-line edit. Either covers every character the game can
+display: checked against `script/`, `talk.grp` and `Ranger.grp`, before and
+after the Traditional conversion, with no glyph missing from either. SimSun's
+coverage is thinner in the abstract -- 22075 mapped code points against
+KaiTi's 28522, and 38 of the `s2t` table's 2744 targets are absent -- but all
+of those are CJK Extension A characters the game never uses.
 
 These assets are grgame's mod and Jinyong's IP. They are committed for
 convenience on a private remote; do not redistribute them.
