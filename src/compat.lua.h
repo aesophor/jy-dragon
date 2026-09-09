@@ -110,4 +110,28 @@ static const char *JY_COMPAT_LUA =
     "function StartMenu()\n"
     "  JY.Status = GAME_START\n"
     "  return _StartMenu()\n"
+    "end\n"
+    /* ---------------------------------------------------------------------- *
+     * Drop the 打赏&赞助 (tip / sponsor) entry from the 系统 menu.
+     *
+     * ShowMenu already has the mechanism: it copies only the entries whose
+     * third field is > 0 (jymain.lua:4912) and returns the selected entry's
+     * ORIGINAL index out of the fourth (5275), which Menu_System's own
+     * `var_22_1 == 7` / `== 8` tests depend on. Setting the flag to 0 is what
+     * the same function does two lines later to grey out save/load in scenes
+     * 42, 82 and 13, so nothing downstream shifts.
+     *
+     * Matching on the callback rather than the label is deliberate: the mod
+     * relabels index 3 to "打开音乐" when JY.EnableMusic is 0 (jymain.lua:1396,
+     * left over from a menu that had music toggles), so the string is not
+     * reliably there. Menu_zhanzhu has exactly one reference, so hooking
+     * ShowMenu globally can only ever match this one entry.
+     * ---------------------------------------------------------------------- */
+    "local _ShowMenu = ShowMenu\n"
+    "function ShowMenu(m, n, ...)\n"
+    "  for i = 1, n do\n"
+    "    local it = m[i]\n"
+    "    if it and it[2] == Menu_zhanzhu then it[3] = 0 end\n"
+    "  end\n"
+    "  return _ShowMenu(m, n, ...)\n"
     "end\n";
