@@ -204,10 +204,13 @@ int main(int argc, char **argv) {
         if (!run_file(L, "_re/script_source/jymain.lua")) goto done;
     }
 
-    /* Windows text-mode semantics the mod's checksum depends on. */
+    /* Rebind the globals jymain.lua just defined -- compatibility fixes and
+     * behaviour changes both, so script/ stays a faithful decompilation. Runs
+     * here because it needs those globals to exist and JY_Main not to have run
+     * yet; see src/compat.lua.h. */
     if (luaL_loadstring(L, JY_COMPAT_LUA) || lua_pcall(L, 0, 0, 0))
         jy_log("compat shim failed: %s", lua_tostring(L, -1));
-    else jy_log("compat: read_files patched for Windows text-mode semantics");
+    else jy_log("compat: shim applied");
 
     /* JY_TEST_TRAD draws the same GBK line twice so the Simplified ->
      * Traditional display conversion can be compared side by side. The sample
