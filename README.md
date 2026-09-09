@@ -17,3 +17,9 @@ brew install sdl3 luajit freetype libpng
 make
 make run
 ```
+
+## Screenshots
+
+| ![Title screen](docs/imgs/title.png) | ![World map](docs/imgs/overworld.png) | ![Battle](docs/imgs/battle.png) |
+|:---:|:---:|:---:|
+| Title screen | World map | Battle |
