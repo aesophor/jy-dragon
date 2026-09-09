@@ -170,6 +170,47 @@ its box at `x + width - 1` (`4694`) and `ShowMenu` at `x + width` (`4981`).
 Same width, one pixel apart by convention. Closing it would mean changing
 `DrawStrBox` for every caller in the game, which is not worth one pixel.
 
+### The 阶级 column had no title
+
+The header had eight fields for eight columns, but the fifth was `%14s` with
+`""` -- an empty slot over the 门派等级 values (长老, 内门弟子, 精英弟子).
+The rows always filled it; only the title was missing. Writing `阶级` in the
+Simplified source displays as 階級 like the rest: `阶` and `级` are both in
+`src/s2t_table.h`.
+
+Aligning that title and 门派 to their values meant re-cutting the header's
+field widths, since alignment here is byte arithmetic -- one byte is half a
+font width, a CJK character is two:
+
+    "%-8s %-8s %-2s %6s %14s %-4s %-10s %-10s"   before
+    "%-8s %-7s %-4s %-4s %8s %13s %-10s %-10s"   after
+
+Byte offsets of each label's ink, against the row values:
+
+| column | row values | header before | header after |
+|---|---|---|---|
+| 存档 | 0 | 0 | 0 |
+| 姓名 | 9 | 9 | 9 |
+| 年龄 | 19 | 18 | 17 |
+| 门派 | 22 | 25 | **22** |
+| 阶级 | 31 | -- | **31** |
+| 位置 | 43..48 | 45 | 45 |
+| 难度 | 50 | 50 | 50 |
+| 存档时间 | 57 | 61 | 61 |
+
+门派 came left three half-widths onto its values and 阶级 lands on its own.
+The total stays 79 bytes, so the border alignment above is unaffected.
+
+年龄 is the one column that cannot align: its label is 4 bytes and its value
+column is 2 (`%-2s` on a number like 15), so the title is wider than the
+data. It sits one half-width further left than before, which is the cost of
+putting 门派 on its values.
+
+`instruct_15` draws a seventh, narrower variant of this header
+(`jymain.lua:7089`, `"%-6s %-10s %-2s %6s %12s %-6s %-10s"`) over the same
+`SaveList` rows, with its box x computed from 25 rather than 38.5 font
+widths. It is mismatched independently of this and is left alone.
+
 ## What stays in src/compat.lua.h
 
 Three shims, none of which are things the mod gets wrong -- editing its source
