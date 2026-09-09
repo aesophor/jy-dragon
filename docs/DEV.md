@@ -44,7 +44,10 @@ a different install, or to refresh it after patching the mod:
     cp -R DATA $D/data;  cp -R SOUND $D/sound; cp -R FONT $D/font
     cp -R PIC  $D/pic;   cp -R save  $D/save;  cp -R script $D/script
     cp CONFIG.lua hzmb.dat $D/
-    tools/c16_to_ttf.py <HJY install> $D/hzmb.dat $D/font/jylegend16.ttf
+
+`font/jylegend16.ttf` is not rebuilt by that recipe -- it ships committed. It
+was generated once from a 1996 install's `FONT.C16`; the converter is no longer
+in the tree, so keep the `.ttf`.
 
 Environment variables, for automated runs:
 
@@ -166,7 +169,6 @@ after: all 632 literals identical, so nothing but whitespace moved.
 | `src/mmap.c`, `warmap.c` | world map and battle maps |
 | `src/compat.lua.h` | post-load Lua shim -- where behaviour changes go, so `game/script/` stays a faithful decompilation |
 | `tools/to_utf8.py` | re-encodes `script/*.lua` between GBK and UTF-8 |
-| `tools/c16_to_ttf.py` | builds `game/font/jylegend16.ttf` from the 1996 bitmap font |
 | `tools/gen_s2t.py` | regenerates `src/s2t_table.h` from OpenCC |
 | `tools/make_app.sh` | assembles the `.app`: dylibs, rpaths, plist, signatures |
 

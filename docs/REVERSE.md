@@ -502,9 +502,11 @@ bounds-checked, since the original would just scribble outside the buffer.
 
 ### The 1996 bitmap font (recovered, verified)
 
-`game/font/jylegend16.ttf` is the original DOS game's typeface. It is built by
-`tools/c16_to_ttf.py` from an untouched 金庸群俠傳 install (`FONT.C16`,
-`FONT3.E16`, both dated 25 Oct 1996) plus this port's `hzmb.dat`.
+`game/font/jylegend16.ttf` is the original DOS game's typeface. It was
+generated once from an untouched 金庸群俠傳 install (`FONT.C16`, `FONT3.E16`,
+both dated 25 Oct 1996) plus this port's `hzmb.dat`, and ships committed --
+the converter is not in the tree, so what follows is the method, not a recipe
+you can re-run.
 
 `FONT.C16` has no header. It is 13973 glyphs of 16x16 1bpp, 32 bytes each,
 indexed straight off the Big5 code:
