@@ -85,4 +85,29 @@ static const char *JY_COMPAT_LUA =
     "    f:close()\n"
     "    CC.FirstFile1, CC.FirstFile2, CC.FirstFile3, CC.FirstFile4 = t, t, t, t\n"
     "  end\n"
+    "end\n"
+    /* ---------------------------------------------------------------------- *
+     * Blank the screen behind the title menu.
+     *
+     * StartMenu opens with Cls(), which dispatches on JY.Status: only the
+     * GAME_START branch clears to black, the others REDRAW the live map
+     * (jymain.lua:6365). Menu_Exit reaches StartMenu without touching
+     * JY.Status (jymain.lua:1942), so returning to the title mid-game leaves
+     * the scene painted underneath and loadpng1 drops the art on top of it.
+     *
+     * Invisible in the original, which ran at the art's own 640x480 so the
+     * picture covered every pixel. LoadPicture does not clear -- sub_407CB0 is
+     * IMG_Load, SDL_DisplayFormat, centre, SDL_UpperBlit, nothing else -- so
+     * at 1220x700 the uncovered border shows the map you just left.
+     *
+     * Setting the status to match where we actually are lets the game's own
+     * Cls() do the clearing. Every StartMenu branch that resumes play assigns
+     * JY.Status itself (GAME_SMAP for new game and for a load, GAME_FIRSTMMAP
+     * for a save with no scene, JY_Main for quit), so nothing downstream reads
+     * the value this overwrites.
+     * ---------------------------------------------------------------------- */
+    "local _StartMenu = StartMenu\n"
+    "function StartMenu()\n"
+    "  JY.Status = GAME_START\n"
+    "  return _StartMenu()\n"
     "end\n";
