@@ -234,6 +234,23 @@ served them out of Enigma's virtual filesystem. They came from
 `../../_re/script_source/` and `../../_re/PIC/`, which is also where to regenerate
 them from.
 
+### Edits to the binary data
+
+Binary diffs are opaque, so anything changed inside `data/` or `save/` is
+recorded here.
+
+| what | where |
+|---|---|
+| Thing 0 (寶石) 物品说明: the byte where 錢 belongs was a literal `?` (0x3F). Replaced with Big5 `bf fa`, growing the string one byte into the NULs after its terminator. 8 bytes changed at file offset 284736, in `data/ranger.grp` and every `save/r*.grp` (saves carry their own copy of the Thing table). Outside the range `leijia` checksums, so `hzbj` still validates. | Thing section + 42, record 0 |
+
+A sweep of the Big5 text fields (`Person.姓名`, `Thing.名称/名称2/物品说明`,
+`Scene.名称`, `Wugong.名称`) finds 45 containing a stray `?`. Most are
+placeholders for unused slots -- `?功1` across Thing 257-259 and 311-317,
+`?功142..144` in Wugong, `?用` (備用, "spare") on Persons 410-419. Two more
+look like real casualties of whatever converted the mod's text: `??本龍馬`
+(坂本龍馬) on Person 519, and `百家之?` on Thing 99. Those are left alone --
+the intended characters are a guess.
+
 `hzmb.dat` is the original engine's GBK/Big5 conversion table, loaded verbatim
 by `lib.CharSet`; it comes from the install root, next to `Dragon.exe`.
 
