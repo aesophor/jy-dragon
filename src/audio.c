@@ -13,6 +13,7 @@
 #include <AudioToolbox/AudioToolbox.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #define RATE 44100
 #define CHANNELS 2
@@ -167,7 +168,14 @@ static int SDLCALL music_worker(void *ud) {
         SDL_LockMutex(g_mtx);
         if (SDL_GetAtomicInt(&g_music_gen) == req->gen) g_music_path[0] = '\0';
         SDL_UnlockMutex(g_mtx);
-        jy_log("PlayMIDI: cannot decode %s", req->path);
+        /* Tell "the mod does not ship this track" apart from "the file is
+         * there and the decoder choked". Missing tracks are routine here --
+         * game00.mp3 and game100.mp3 are deliberately absent and the scripts
+         * rely on the resulting silence -- so a decode error is the only one
+         * of the two worth chasing. */
+        jy_log(access(req->path, R_OK) == 0 ? "PlayMIDI: cannot decode %s"
+                                            : "PlayMIDI: no such file %s",
+               req->path);
     } else if (SDL_GetAtomicInt(&g_music_gen) != req->gen) {
         free(c.pcm); /* superseded while decoding */
     } else {
@@ -267,7 +275,9 @@ void jy_play_sound(const char *path) {
         if (g_nsfx >= SFX_CACHE) return;
         Clip c;
         if (!decode_file(path, &c)) {
-            jy_log("PlayWAV: cannot decode %s", path);
+            jy_log(access(path, R_OK) == 0 ? "PlayWAV: cannot decode %s"
+                                           : "PlayWAV: no such file %s",
+                   path);
             return;
         }
         snprintf(g_sfx_cache[g_nsfx].path, sizeof(g_sfx_cache[0].path), "%s", path);
