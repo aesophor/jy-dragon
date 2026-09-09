@@ -4867,7 +4867,14 @@ function PlayMIDI(arg_108_0)
 		return
 	end
 
-	if arg_108_0 >= 0 then
+	-- [port] ids from CC.BattleMusicBase up are battle tracks, which do
+	-- not fit CC.MIDIFile's game%02d pattern. Routing them through here
+	-- keeps JY.CurrentMIDI correct, so the music toggle and the
+	-- post-battle restore need no special case.
+	if arg_108_0 >= CC.BattleMusicBase then
+		lib.PlayMIDI(string.format(CC.BattleMusicFile,
+			arg_108_0 - CC.BattleMusicBase + 1))
+	elseif arg_108_0 >= 0 then
 		lib.PlayMIDI(string.format(CC.MIDIFile, arg_108_0))
 	end
 end

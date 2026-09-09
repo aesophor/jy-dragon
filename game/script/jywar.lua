@@ -17182,6 +17182,17 @@ function WarMain(arg_78_0, arg_78_1, arg_78_2, arg_78_3)
 		return false
 	end
 
+	-- [port] battle BGM. WarMain is the single entry point for every
+	-- battle in the game, and the original never changed the music here.
+	-- Placed after WarSelectTeam/WarSelectEnemy so it starts once the
+	-- "who fights" prompts are done rather than under them, and after the
+	-- JY.Restart check because that path returns early, skipping the
+	-- restore at the end of this function. No tracks present: no-op, and
+	-- the scene keeps playing.
+	if CC.BattleMusicNum > 0 then
+		PlayMIDI(CC.BattleMusicBase + math.random(CC.BattleMusicNum) - 1)
+	end
+
 	CleanMemory()
 	lib.PicInit()
 	lib.ShowSlow(20, 1)

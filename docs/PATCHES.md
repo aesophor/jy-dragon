@@ -231,6 +231,56 @@ unchanged at 31.0..1185.5 against 31.0..1186.5).
 `SaveList` rows, with its box x computed from 25 rather than 38.5 font
 widths. It is mismatched independently of this and is left alone.
 
+## Battle background music
+
+`jyconst.lua:206` -- `CC.BattleMusicFile`, `CC.BattleMusicBase`, `CC.BattleMusicNum`
+`jymain.lua:4870` -- `PlayMIDI` addresses the battle range
+`jywar.lua:17192` -- pick one on entering a battle
+
+The mod has no battle music. `WarMain` -- the single entry point every battle
+in the game routes through -- never touches the music, so combat inherits
+whatever the scene or world map was playing. The schema has a per-battle
+`CC.WarData_S.音乐` field (`jyconst.lua:2679`) that no script ever reads, and
+the only battle-specific track is the victory fanfare `PlayMIDI(100)`
+(`jywar.lua:18830`, `18841`), whose `game100.mp3` does not ship.
+
+New tracks go in `sound/battle<N>.mp3`, and the count is probed at startup
+rather than hardcoded, so adding `battle4.mp3` needs no code change:
+
+    while existFile(string.format(CC.BattleMusicFile, CC.BattleMusicNum + 1)) do
+        CC.BattleMusicNum = CC.BattleMusicNum + 1
+    end
+
+`PlayMIDI` takes a track *number* and formats it into `CC.MIDIFile`
+(`game%02d.mp3`), which `battle1.mp3` cannot be expressed as. Rather than
+calling `lib.PlayMIDI` directly from the battle code, ids at or above
+`CC.BattleMusicBase` (9001, clear of every id the scripts use -- the highest
+shipped track is 2002) are mapped to the battle pattern inside `PlayMIDI`
+itself. That keeps `JY.CurrentMIDI` accurate, which is what two other things
+depend on:
+
+- `Menu_SetMusic` (`1715`) replays `JY.CurrentMIDI` when you toggle music
+  back on, so it resumes the battle track rather than the scene's;
+- `WarMain`'s tail already restores `JY.Scene[JY.SubScene].进门音乐`, or
+  `PlayMIDI(0)`, on every exit (`18895`), so nothing is needed to end it.
+
+Where the call sits in `WarMain` matters twice over. It goes after
+`WarSelectTeam` and `WarSelectEnemy`, so the track starts once the "who
+fights" and "bring your 佣兵?" prompts are done rather than underneath them.
+And it goes after the `JY.Restart` check (`17182`), because that path
+`return false`s straight out of `WarMain` and never reaches the restore at
+the end -- starting the music above it would leave a battle track playing
+over the scene with nothing to stop it.
+
+Guarded on `CC.BattleMusicNum > 0`, so a `sound/` with no battle tracks
+behaves exactly as the mod always did.
+
+Verified by probing `PlayMIDI` at startup: id 9002 resolved to
+`./sound/battle2.mp3` (83.0s, looping) and 9003 to `battle3.mp3`, with
+`JY.CurrentMIDI` following, while plain id 11 still resolved to
+`game11.mp3`. The count probed as 3. The `WarMain` hook itself is not covered
+-- there is no harness that enters a battle, so it needs a real fight.
+
 ## What stays in src/compat.lua.h
 
 Three shims, none of which are things the mod gets wrong -- editing its source

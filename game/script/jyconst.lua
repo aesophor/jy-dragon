@@ -203,6 +203,15 @@ function SetGlobalConst()
 	CC.OGGFile = CONFIG.SoundPath .. "game%02d.ogg"
 	CC.ATKFile = CONFIG.SoundPath .. "atk%02d.wav"
 	CC.EFile = CONFIG.SoundPath .. "e%02d.wav"
+	-- [port] battle BGM; see docs/PATCHES.md. Counted rather than
+	-- hardcoded, so dropping in battle4.mp3 is all it takes.
+	CC.BattleMusicFile = CONFIG.SoundPath .. "battle%d.mp3"
+	CC.BattleMusicBase = 9001
+	CC.BattleMusicNum = 0
+
+	while existFile(string.format(CC.BattleMusicFile, CC.BattleMusicNum + 1)) do
+		CC.BattleMusicNum = CC.BattleMusicNum + 1
+	end
 	CC.WarFile = CONFIG.DataPath .. "war.sta"
 	CC.WarMapFile = {
 		CONFIG.DataPath .. "warfld.idx",

@@ -1,7 +1,23 @@
 diff -ru --label pristine --label ported ../_re/script_source_utf8/jyconst.lua game/script/jyconst.lua
 --- pristine
 +++ ported
-@@ -1779,6 +1779,8 @@
+@@ -203,6 +203,15 @@
+ 	CC.OGGFile = CONFIG.SoundPath .. "game%02d.ogg"
+ 	CC.ATKFile = CONFIG.SoundPath .. "atk%02d.wav"
+ 	CC.EFile = CONFIG.SoundPath .. "e%02d.wav"
++	-- [port] battle BGM; see docs/PATCHES.md. Counted rather than
++	-- hardcoded, so dropping in battle4.mp3 is all it takes.
++	CC.BattleMusicFile = CONFIG.SoundPath .. "battle%d.mp3"
++	CC.BattleMusicBase = 9001
++	CC.BattleMusicNum = 0
++
++	while existFile(string.format(CC.BattleMusicFile, CC.BattleMusicNum + 1)) do
++		CC.BattleMusicNum = CC.BattleMusicNum + 1
++	end
+ 	CC.WarFile = CONFIG.DataPath .. "war.sta"
+ 	CC.WarMapFile = {
+ 		CONFIG.DataPath .. "warfld.idx",
+@@ -1779,6 +1788,8 @@
  	CC.PersonMoveFrame = CC.Frame * 2
  	CC.AnimationFrame = CC.Frame * 3
  	CC.WarAutoDelay = 300
@@ -10,7 +26,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jyconst.lua g
  	CC.DirectX = {
  		0,
  		1,
-@@ -2758,7 +2760,7 @@
+@@ -2758,7 +2769,7 @@
  
  	CC.ThingGapOut = 10
  	CC.ThingGapIn = 10
@@ -69,7 +85,23 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jymain.lua ga
  
  	local var_39_2 = SaveList()
  
-@@ -9891,18 +9895,18 @@
+@@ -4863,7 +4867,14 @@
+ 		return
+ 	end
+ 
+-	if arg_108_0 >= 0 then
++	-- [port] ids from CC.BattleMusicBase up are battle tracks, which do
++	-- not fit CC.MIDIFile's game%02d pattern. Routing them through here
++	-- keeps JY.CurrentMIDI correct, so the music toggle and the
++	-- post-battle restore need no special case.
++	if arg_108_0 >= CC.BattleMusicBase then
++		lib.PlayMIDI(string.format(CC.BattleMusicFile,
++			arg_108_0 - CC.BattleMusicBase + 1))
++	elseif arg_108_0 >= 0 then
+ 		lib.PlayMIDI(string.format(CC.MIDIFile, arg_108_0))
+ 	end
+ end
+@@ -9891,18 +9902,18 @@
  		local var_275_18 = read_files(string.format(CC.CircleFile, iter_275_1), 2000 + 20 * iter_275_1, 20)
  
  		if var_275_18 ~= nil then
@@ -94,7 +126,25 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jymain.lua ga
 diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua game/script/jywar.lua
 --- pristine
 +++ ported
-@@ -20599,9 +20599,8 @@
+@@ -17182,6 +17182,17 @@
+ 		return false
+ 	end
+ 
++	-- [port] battle BGM. WarMain is the single entry point for every
++	-- battle in the game, and the original never changed the music here.
++	-- Placed after WarSelectTeam/WarSelectEnemy so it starts once the
++	-- "who fights" prompts are done rather than under them, and after the
++	-- JY.Restart check because that path returns early, skipping the
++	-- restore at the end of this function. No tracks present: no-op, and
++	-- the scene keeps playing.
++	if CC.BattleMusicNum > 0 then
++		PlayMIDI(CC.BattleMusicBase + math.random(CC.BattleMusicNum) - 1)
++	end
++
+ 	CleanMemory()
+ 	lib.PicInit()
+ 	lib.ShowSlow(20, 1)
+@@ -20599,9 +20610,8 @@
  
  					ShowScreen()
  
@@ -106,7 +156,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  
  					lib.LoadSur(var_122_34, CC.ScreenW / 2 - 5 * CC.XScale, CC.ScreenH / 2 - var_122_22 - 18 * CC.YScale)
  				end
-@@ -20895,7 +20894,7 @@
+@@ -20895,7 +20905,7 @@
  		elseif var_122_65 then
  			lib.ShowSurface(0)
  			lib.LoadSur(var_122_63, var_122_55, var_122_57)
