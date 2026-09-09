@@ -31,7 +31,7 @@ every other path comes from `CONFIG.CurrentPath = "./"` in `CONFIG.lua`:
 | `PicturePath` | `./pic/` | extracted `PIC/` |
 | `SoundPath` | `./sound/` | original `SOUND/` |
 | `ScriptPath` | `./script/` | decompiled `script_source/` |
-| `FontName` | `./font/simsun.ttf` | original `FONT/` |
+| `FontName` | `./font/jylegend16.ttf` | converted from the 1996 `FONT.C16` |
 | `CC.SavePath` | `./save/` (via `data/../save/`) | original `save/` |
 
 So a self-contained bundle is:
@@ -59,6 +59,7 @@ a different install, or to refresh it after patching the mod:
     cp -R DATA $D/data;  cp -R SOUND $D/sound; cp -R FONT $D/font
     cp -R PIC  $D/pic;   cp -R save  $D/save;  cp -R script $D/script
     cp CONFIG.lua hzmb.dat $D/
+    tools/c16_to_ttf.py <HJY install> $D/hzmb.dat $D/font/jylegend16.ttf
 
 Environment variables, for automated runs:
 
@@ -452,6 +453,49 @@ keeps `luaL_checklstring` for the string, because the original passes
 `lua_tolstring`'s `NULL` straight to `strlen`; and the offsets stay
 bounds-checked, since the original would just scribble outside the buffer.
 
+### The 1996 bitmap font (recovered, verified)
+
+`game/font/jylegend16.ttf` is the original DOS game's typeface. It is built by
+`tools/c16_to_ttf.py` from an untouched 金庸群俠傳 install (`FONT.C16`,
+`FONT3.E16`, both dated 25 Oct 1996) plus this port's `hzmb.dat`.
+
+`FONT.C16` has no header. It is 13973 glyphs of 16x16 1bpp, 32 bytes each,
+indexed straight off the Big5 code:
+
+    offset = ((lead - 0xA1) * 157 + trailIndex) * 32
+    trailIndex = trail - 0x40        for trail 0x40..0x7E   (63 values)
+                 trail - 0xA1 + 63   for trail 0xA1..0xFE   (94 values)
+
+89 leads x 157 trails = 13973, exactly the glyph count -- which is what
+confirms the layout, the same way the byte count confirms `hzmb.dat`'s.
+`FONT3.E16` is the matching 8x16 half-width ASCII face, 16 bytes per glyph,
+indexed by character code. (`FONT.E16` in the same directory does not decode
+under any layout tried and is unused; `FONT3.C16` is byte-identical to
+`FONT.C16` apart from a handful of glyphs.)
+
+The piece a bitmap-to-TTF conversion normally lacks is a `cmap`, and
+`hzmb.dat` supplies it: its mode-2 table is Big5 -> UTF-16, and it maps
+**13973 of 13973** cells -- every glyph in the font.
+
+Each lit pixel becomes a square, greedily merged into maximal rectangles.
+TrueType fills by non-zero winding, so same-direction rectangles that touch or
+overlap just union; no outline extraction is needed. The em is 1024 units =
+the 16px cell, baseline at the cell's bottom edge, no descent, because
+`jy_draw_string` blits at `y + size - bitmap_top` and so treats the ascender
+as the full pixel size.
+
+Two things to know:
+
+- **It is a 16px design.** `CC.DefaultFont` is `min(W, H) / 320 * 16`, which is
+  35 at 1220x700, so pixels land on a 2.1875x grid and come out 2 or 3 device
+  pixels wide. Sizes that are multiples of 16 are exact; nothing else is.
+- **226 code points the scripts can reach have no glyph**, because Big5 has no
+  cell for them. 222 of those are rare candidates inside `SeleteHanzi`'s pinyin
+  table, where they show as blanks in the name-entry list; the rest are 劵, 咔,
+  嘭 and 錇. U+3000 is also absent from Big5 and is added explicitly as a blank
+  full-width glyph -- without it every padded string in `jyconst.lua` and
+  `jywar.lua` draws a row of `.notdef` boxes.
+
 ### `CharSet`'s conversion table (recovered, verified)
 
 `lib.CharSet` is **not** a codepoint conversion, and iconv cannot stand in for
@@ -725,15 +769,14 @@ them from.
 `hzmb.dat` is the original engine's GBK/Big5 conversion table, loaded verbatim
 by `lib.CharSet`; it comes from the install root, next to `Dragon.exe`.
 
-`font/` holds both faces the game can use. `CONFIG.FontName` selects one, and
-it points at **`simsun.ttf`** (SimSun, 宋体 -- the Ming/serif look); the
-original's `font.ttc` (KaiTi, 楷体 -- brush script) is still there, so
-switching back is a one-line edit. Either covers every character the game can
-display: checked against `script/`, `talk.grp` and `Ranger.grp`, before and
-after the Traditional conversion, with no glyph missing from either. SimSun's
-coverage is thinner in the abstract -- 22075 mapped code points against
-KaiTi's 28522, and 38 of the `s2t` table's 2744 targets are absent -- but all
-of those are CJK Extension A characters the game never uses.
+`font/` holds the faces the game can use, and `CONFIG.FontName` selects one.
+It points at **`jylegend16.ttf`**, the 1996 game's own bitmap font converted to
+an outline TTF -- see [The 1996 bitmap font](#the-1996-bitmap-font-recovered-verified).
+`simsun.ttf` (SimSun, 宋体) is the fallback if you want a modern face;
+switching is a one-line edit. SimSun covers every character the game can
+display, checked against `script/`, `talk.grp` and `Ranger.grp` both before and
+after the Traditional conversion; the bitmap font covers all but 226, listed
+below.
 
 These assets are grgame's mod and Jinyong's IP. They are committed for
 convenience on a private remote; do not redistribute them.

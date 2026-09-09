@@ -68,7 +68,7 @@ CONFIG.ScriptLuaPath = string.format("?.lua;%sscript/?.lua;%sscript/?.lua", CONF
 
 CONFIG.JYMain_Lua=CONFIG.ScriptPath .. "jymain.lua";   --lua主程序名
 
-CONFIG.FontName=CONFIG.CurrentPath.."font/simsun.ttf";
+CONFIG.FontName=CONFIG.CurrentPath.."font/jylegend16.ttf";
 
 --使用FMOD播放MIDI，需要gm.dls文件
 if CONFIG.MP3 == 0 then
