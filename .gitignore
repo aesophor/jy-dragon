@@ -1,5 +1,4 @@
 .DS_Store
 build/
-game/port_debug.txt
+game/debug.log
 game/save/
-__pycache__/

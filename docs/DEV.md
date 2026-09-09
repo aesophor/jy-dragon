@@ -7,7 +7,7 @@ Layout, packaging and status. Build instructions are in the
 ## Standalone layout
 
 Everything is resolved relative to the working directory. The engine hardcodes
-only `CONFIG.lua`, `script/jymain.lua`, and the `port_debug.txt` it writes;
+only `CONFIG.lua`, `script/jymain.lua`, and the `debug.log` it writes;
 every other path comes from `CONFIG.CurrentPath = "./"` in `CONFIG.lua`:
 
 | CONFIG entry | resolves to | source |
@@ -30,7 +30,7 @@ So a self-contained bundle is:
 
 `game/` is ~297 MB and is committed, so a clone has everything it needs to
 run -- see the licensing note under [.app bundle](#app-bundle) before you push
-it anywhere public. Only `build/` and `game/port_debug.txt` are gitignored.
+it anywhere public. Only `build/` and `game/debug.log` are gitignored.
 Note the directories are **lowercase** here,
 matching what `CONFIG.lua` actually asks for -- the original install relied on
 Windows and APFS being case-insensitive, so `DATA/` worked by luck. Lowercasing

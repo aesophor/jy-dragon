@@ -99,7 +99,7 @@ done
 # save/ is copied only when absent: the game writes those files in place, so a
 # rebuild must not clobber progress. Everything else is mirrored.
 rsync -a --delete \
-    --exclude 'save/' --exclude 'port_debug.txt' \
+    --exclude 'save/' --exclude 'debug.log' \
     --exclude '.DS_Store' --exclude 'Thumbs.db' \
     "$GAME/" "$RES/game/"
 if [ ! -d "$RES/game/save" ]; then

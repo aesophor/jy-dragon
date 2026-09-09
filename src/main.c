@@ -121,7 +121,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    g_logf = fopen("port_debug.txt", "w");
+    g_logf = fopen("debug.log", "w");
     jy_log("== jyengine: native macOS port ==");
 
     lua_State *L = luaL_newstate();
