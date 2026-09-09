@@ -205,4 +205,26 @@ static const char *JY_COMPAT_LUA =
     "    eff_armed = false\n"
     "    eff_shown = lib.GetTime()\n"
     "  end\n"
+    "end\n"
+    /* ---------------------------------------------------------------------- *
+     * Reset the music to the title track when the title menu is entered.
+     *
+     * PlayMIDI(11) lives in JY_Main_sub, one line before its StartMenu() call
+     * (jymain.lua:127). Quitting mid-game does not go through there: the 系统
+     * menu's 离开游戏 calls StartMenu() directly (1946), so the title screen
+     * comes up still playing the scene or world-map track you left.
+     *
+     * Playing it on entry to StartMenu covers every caller instead of just
+     * that one, and costs nothing where the music is already right --
+     * jy_play_music returns without touching the stream when the same file is
+     * requested again (audio.c:207, mirroring byte_460970 in the original),
+     * so the duplicate from line 127 is a no-op rather than a restart.
+     *
+     * Before _StartMenu, not after: the branches that start or load a game
+     * set their own track from Init_SMap / Init_MMap, and those must win.
+     * ---------------------------------------------------------------------- */
+    "local _StartMenu2 = StartMenu\n"
+    "function StartMenu()\n"
+    "  PlayMIDI(11)\n"
+    "  return _StartMenu2()\n"
     "end\n";
