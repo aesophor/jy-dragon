@@ -40,6 +40,26 @@ format:
 format-check:
 	@clang-format --dry-run --Werror src/*.c src/*.h && echo "src/ is formatted"
 
+# game/script/ is ljd2's output with a handful of deliberate edits, each marked
+# `-- [port]`. The pristine decompilation stays in _re/script_source_utf8, so
+# the diff between them IS the list of changes -- regenerate it after editing a
+# script, and docs/PATCHES.md says why each one is there.
+PRISTINE = ../_re/script_source_utf8
+# --label pins the header: the default carries mtimes, which would make
+# script-diff-check fail after a checkout rather than after a real edit.
+SCRIPT_DIFF = diff -ru --label pristine --label ported $(PRISTINE) game/script
+script-diff:
+	@$(SCRIPT_DIFF) > docs/script-patches.diff; \
+	 test $$? -le 1 && echo "wrote docs/script-patches.diff \
+($$(grep -c '^+' docs/script-patches.diff) added, \
+$$(grep -c '^-' docs/script-patches.diff) removed lines)"
+
+# Fails if a script was edited without regenerating the diff.
+script-diff-check:
+	@$(SCRIPT_DIFF) | diff -q - docs/script-patches.diff \
+	  > /dev/null && echo "docs/script-patches.diff is current" \
+	  || { echo "docs/script-patches.diff is stale -- run 'make script-diff'"; exit 1; }
+
 clean:
 	rm -rf $(BUILD)
 
@@ -74,4 +94,5 @@ install-app: app
 	cp -R "$(APP)" "$(HOME)/Applications/"
 	@echo "installed to ~/Applications/$(APP_NAME).app"
 
-.PHONY: all clean run app install-app format format-check
+.PHONY: all clean run app install-app format format-check \
+	script-diff script-diff-check

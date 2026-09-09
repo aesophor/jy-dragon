@@ -1,6 +1,17 @@
 /* Post-load shim, injected after the game's scripts load and before JY_Main
- * runs. This is where behaviour changes go, so script/ stays a faithful
- * decompilation.
+ * runs, so it can rebind globals the scripts have just defined.
+ *
+ * What belongs here, and what does not. Changes to how the GAME behaves --
+ * timing, layout, menu contents -- go straight into game/script/ marked
+ * `-- [port]`; the pristine ljd2 output is kept in _re/script_source_utf8 and
+ * `make script-diff` regenerates docs/script-patches.diff, so the edits stay
+ * separable from the mod without being contorted into wrappers. See
+ * docs/PATCHES.md.
+ *
+ * What is left here is the work a wrapper does better: compensating for the
+ * host platform, and defending against data the scripts trust. Those are not
+ * things the mod gets wrong, so editing its source to say so would misplace
+ * the blame.
  *
  * 1. Windows text-mode read_files semantics, which the save checksum needs.
  *
@@ -85,146 +96,4 @@ static const char *JY_COMPAT_LUA =
     "    f:close()\n"
     "    CC.FirstFile1, CC.FirstFile2, CC.FirstFile3, CC.FirstFile4 = t, t, t, t\n"
     "  end\n"
-    "end\n"
-    /* ---------------------------------------------------------------------- *
-     * Lift the title menu off the bottom edge.
-     *
-     * jyconst.lua:2761 anchors it to the window:
-     *   CC.StartMenuY = ScreenH - 3 * (StartMenuFontSize + RowPixel) - 20
-     * which leaves the three rows sitting 20px from the bottom. That was right
-     * at 640x480, where the art filled every pixel. The art is still 640x480
-     * and LoadPicture centres it, so in a 1220x700 window it spans y 110..590
-     * and the menu block (554..680) hung 90px past it onto bare black.
-     *
-     * Raising it by two row heights puts the block at 470..596 -- its bottom
-     * edge level with the art's -- and the term scales with the font, so it
-     * holds at other window sizes instead of being a magic number for this
-     * one. Three "请稍候..." boxes share CC.StartMenuY and move with it, which
-     * is what you want: same screen, same place.
-     * ---------------------------------------------------------------------- */
-    "local _IncludeFile2 = IncludeFile\n"
-    "function IncludeFile()\n"
-    "  _IncludeFile2()\n"
-    "  local _SGC = SetGlobalConst\n"
-    "  function SetGlobalConst()\n"
-    "    _SGC()\n"
-    "    CC.StartMenuY = CC.StartMenuY - 2 * (CC.StartMenuFontSize + CC.RowPixel)\n"
-    "  end\n"
-    "end\n"
-    /* ---------------------------------------------------------------------- *
-     * Blank the screen behind the title menu.
-     *
-     * StartMenu opens with Cls(), which dispatches on JY.Status: only the
-     * GAME_START branch clears to black, the others REDRAW the live map
-     * (jymain.lua:6365). Menu_Exit reaches StartMenu without touching
-     * JY.Status (jymain.lua:1942), so returning to the title mid-game leaves
-     * the scene painted underneath and loadpng1 drops the art on top of it.
-     *
-     * Invisible in the original, which ran at the art's own 640x480 so the
-     * picture covered every pixel. LoadPicture does not clear -- sub_407CB0 is
-     * IMG_Load, SDL_DisplayFormat, centre, SDL_UpperBlit, nothing else -- so
-     * at 1220x700 the uncovered border shows the map you just left.
-     *
-     * Setting the status to match where we actually are lets the game's own
-     * Cls() do the clearing. Every StartMenu branch that resumes play assigns
-     * JY.Status itself (GAME_SMAP for new game and for a load, GAME_FIRSTMMAP
-     * for a save with no scene, JY_Main for quit), so nothing downstream reads
-     * the value this overwrites.
-     * ---------------------------------------------------------------------- */
-    "local _StartMenu = StartMenu\n"
-    "function StartMenu()\n"
-    "  JY.Status = GAME_START\n"
-    "  return _StartMenu()\n"
-    "end\n"
-    /* ---------------------------------------------------------------------- *
-     * Drop the 打赏&赞助 (tip / sponsor) entry from the 系统 menu.
-     *
-     * ShowMenu already has the mechanism: it copies only the entries whose
-     * third field is > 0 (jymain.lua:4912) and returns the selected entry's
-     * ORIGINAL index out of the fourth (5275), which Menu_System's own
-     * `var_22_1 == 7` / `== 8` tests depend on. Setting the flag to 0 is what
-     * the same function does two lines later to grey out save/load in scenes
-     * 42, 82 and 13, so nothing downstream shifts.
-     *
-     * Matching on the callback rather than the label is deliberate: the mod
-     * relabels index 3 to "打开音乐" when JY.EnableMusic is 0 (jymain.lua:1396,
-     * left over from a menu that had music toggles), so the string is not
-     * reliably there. Menu_zhanzhu has exactly one reference, so hooking
-     * ShowMenu globally can only ever match this one entry.
-     * ---------------------------------------------------------------------- */
-    "local _ShowMenu = ShowMenu\n"
-    "function ShowMenu(m, n, ...)\n"
-    "  for i = 1, n do\n"
-    "    local it = m[i]\n"
-    "    if it and it[2] == Menu_zhanzhu then it[3] = 0 end\n"
-    "  end\n"
-    "  return _ShowMenu(m, n, ...)\n"
-    "end\n"
-    /* ---------------------------------------------------------------------- *
-     * Hold the battle effect text ("击中破绽", "葵花移形", ...) on screen long
-     * enough to read.
-     *
-     * War_ShowFight redraws the text once per frame for a fixed 20 frames
-     * (jywar.lua:20838). When the skill has an effect animation the frame is
-     * paced -- lib.Delay(2 * CC.Frame), 60ms (20893). When it has only text,
-     * the same frame gets lib.Delay(1) (20897), so the loop runs as fast as
-     * the blits do. That was self-limiting on the original: SDL 1.2 software
-     * blits plus an uncached SDL_ttf render cost tens of milliseconds a frame.
-     * Here a frame costs about one, and 20 of them are a flicker.
-     *
-     * So this is not a wrong value in the script, it is an animation with no
-     * clock. Give it one: a floor on how soon the *next* frame may be
-     * presented after an effect-text frame. Arm on the KungfuString calls
-     * that draw it -- rows 1..4 are the four 特效文字 slots and nothing
-     * else, the skill name and the combo text both use row 0 (20492, 20498).
-     *
-     * Because the floor measures from the present and subtracts what the
-     * script already waited, the animated branch keeps its own 60ms and only
-     * the unpaced branches are padded. 20 frames x 40ms is about 800ms of
-     * legible text; JY_EFFECT_TEXT_MS retunes it without a rebuild, and 0
-     * restores the original timing.
-     * ---------------------------------------------------------------------- */
-    "local EFF_MS = tonumber(os.getenv('JY_EFFECT_TEXT_MS')) or 40\n"
-    "local eff_shown, eff_armed = nil, false\n"
-    "local _KungfuString = KungfuString\n"
-    "function KungfuString(s, x, y, c, size, font, row)\n"
-    "  if s ~= nil and type(row) == 'number' and row >= 1 then\n"
-    "    eff_armed = true\n"
-    "  end\n"
-    "  return _KungfuString(s, x, y, c, size, font, row)\n"
-    "end\n"
-    "local _ShowSurface = lib.ShowSurface\n"
-    "function lib.ShowSurface(mode)\n"
-    "  if eff_shown then\n"
-    "    local dt = lib.GetTime() - eff_shown\n"
-    "    if dt >= 0 and dt < EFF_MS then lib.Delay(EFF_MS - dt) end\n"
-    "    eff_shown = nil\n"
-    "  end\n"
-    "  _ShowSurface(mode)\n"
-    "  if eff_armed then\n"
-    "    eff_armed = false\n"
-    "    eff_shown = lib.GetTime()\n"
-    "  end\n"
-    "end\n"
-    /* ---------------------------------------------------------------------- *
-     * Reset the music to the title track when the title menu is entered.
-     *
-     * PlayMIDI(11) lives in JY_Main_sub, one line before its StartMenu() call
-     * (jymain.lua:127). Quitting mid-game does not go through there: the 系统
-     * menu's 离开游戏 calls StartMenu() directly (1946), so the title screen
-     * comes up still playing the scene or world-map track you left.
-     *
-     * Playing it on entry to StartMenu covers every caller instead of just
-     * that one, and costs nothing where the music is already right --
-     * jy_play_music returns without touching the stream when the same file is
-     * requested again (audio.c:207, mirroring byte_460970 in the original),
-     * so the duplicate from line 127 is a no-op rather than a restart.
-     *
-     * Before _StartMenu, not after: the branches that start or load a game
-     * set their own track from Init_SMap / Init_MMap, and those must win.
-     * ---------------------------------------------------------------------- */
-    "local _StartMenu2 = StartMenu\n"
-    "function StartMenu()\n"
-    "  PlayMIDI(11)\n"
-    "  return _StartMenu2()\n"
     "end\n";

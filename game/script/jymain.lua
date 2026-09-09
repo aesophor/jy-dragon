@@ -155,6 +155,10 @@ function loadpng1()
 end
 
 function StartMenu()
+	-- [port] Menu_Exit reaches the title without going through
+	-- JY_Main_sub, which is where these two normally happen (122, 127).
+	JY.Status = GAME_START
+	PlayMIDI(11)
 	Cls()
 	loadpng1()
 
@@ -1378,7 +1382,7 @@ function Menu_System()
 		{
 			"打赏&赞助",
 			Menu_zhanzhu,
-			1
+			0  -- [port] was 1; hides the entry, keeps the indices
 		},
 		{
 			"游戏调速",

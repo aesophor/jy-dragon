@@ -1,0 +1,68 @@
+diff -ru --label pristine --label ported ../_re/script_source_utf8/jyconst.lua game/script/jyconst.lua
+--- pristine
++++ ported
+@@ -1779,6 +1779,8 @@
+ 	CC.PersonMoveFrame = CC.Frame * 2
+ 	CC.AnimationFrame = CC.Frame * 3
+ 	CC.WarAutoDelay = 300
++	-- [port] ms to hold each battle effect-text frame; see jywar.lua.
++	CC.EffectTextMS = tonumber(os.getenv('JY_EFFECT_TEXT_MS')) or 40
+ 	CC.DirectX = {
+ 		0,
+ 		1,
+@@ -2758,7 +2760,7 @@
+ 
+ 	CC.ThingGapOut = 10
+ 	CC.ThingGapIn = 10
+-	CC.StartMenuY = CC.ScreenH - 3 * (CC.StartMenuFontSize + CC.RowPixel) - 20
++	CC.StartMenuY = CC.ScreenH - 5 * (CC.StartMenuFontSize + CC.RowPixel) - 20  -- [port] was 3; too close to the bottom edge
+ 	CC.NewGameY = CC.ScreenH - 4 * (CC.NewGameFontSize + CC.RowPixel) - 10
+ 	CC.MainSubMenuX = CC.MainMenuX + 2 * CC.MenuBorderPixel + 2 * CC.DefaultFont + 5
+ 	CC.MainSubMenuY = CC.MainMenuY
+diff -ru --label pristine --label ported ../_re/script_source_utf8/jymain.lua game/script/jymain.lua
+--- pristine
++++ ported
+@@ -155,6 +155,10 @@
+ end
+ 
+ function StartMenu()
++	-- [port] Menu_Exit reaches the title without going through
++	-- JY_Main_sub, which is where these two normally happen (122, 127).
++	JY.Status = GAME_START
++	PlayMIDI(11)
+ 	Cls()
+ 	loadpng1()
+ 
+@@ -1378,7 +1382,7 @@
+ 		{
+ 			"打赏&赞助",
+ 			Menu_zhanzhu,
+-			1
++			0  -- [port] was 1; hides the entry, keeps the indices
+ 		},
+ 		{
+ 			"游戏调速",
+diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua game/script/jywar.lua
+--- pristine
++++ ported
+@@ -20599,9 +20599,8 @@
+ 
+ 					ShowScreen()
+ 
+-					if CONFIG.Operation == 0 then
+-						-- Nothing
+-					end
++					-- [port] this loop had no pacing at all, so the text flashed past.
++					lib.Delay(CC.EffectTextMS)
+ 
+ 					lib.LoadSur(var_122_34, CC.ScreenW / 2 - 5 * CC.XScale, CC.ScreenH / 2 - var_122_22 - 18 * CC.YScale)
+ 				end
+@@ -20895,7 +20894,7 @@
+ 		elseif var_122_65 then
+ 			lib.ShowSurface(0)
+ 			lib.LoadSur(var_122_63, var_122_55, var_122_57)
+-			lib.Delay(1)
++			lib.Delay(CC.EffectTextMS)  -- [port] was 1; the branch above uses 2 * CC.Frame
+ 		end
+ 	end
+ 

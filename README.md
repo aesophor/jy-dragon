@@ -5,6 +5,7 @@
 Docs:
 - **[docs/REVERSE.md](docs/REVERSE.md)** - the detailed reverse engineering process, starting from unpacking `Dragon.exe`, getting the Lua and the assets out of it, the engine behaviour recovered from the original binary, and how to drive IDA through `ida-pro-mcp`.
 - **[docs/DEV.md](docs/DEV.md)** - game-directory layout, the `.app` bundle, formatting, source map, status, assets.
+- **[docs/PATCHES.md](docs/PATCHES.md)** - the deliberate edits to the decompiled Lua scripts, and why each one is there.
 
 ## Dependencies
 ```

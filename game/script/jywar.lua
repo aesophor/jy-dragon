@@ -20599,9 +20599,8 @@ function War_ShowFight(arg_122_0, arg_122_1, arg_122_2, arg_122_3, arg_122_4, ar
 
 					ShowScreen()
 
-					if CONFIG.Operation == 0 then
-						-- Nothing
-					end
+					-- [port] this loop had no pacing at all, so the text flashed past.
+					lib.Delay(CC.EffectTextMS)
 
 					lib.LoadSur(var_122_34, CC.ScreenW / 2 - 5 * CC.XScale, CC.ScreenH / 2 - var_122_22 - 18 * CC.YScale)
 				end
@@ -20895,7 +20894,7 @@ function War_ShowFight(arg_122_0, arg_122_1, arg_122_2, arg_122_3, arg_122_4, ar
 		elseif var_122_65 then
 			lib.ShowSurface(0)
 			lib.LoadSur(var_122_63, var_122_55, var_122_57)
-			lib.Delay(1)
+			lib.Delay(CC.EffectTextMS)  -- [port] was 1; the branch above uses 2 * CC.Frame
 		end
 	end
 

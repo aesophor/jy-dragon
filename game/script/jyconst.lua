@@ -1779,6 +1779,8 @@ function SetGlobalConst()
 	CC.PersonMoveFrame = CC.Frame * 2
 	CC.AnimationFrame = CC.Frame * 3
 	CC.WarAutoDelay = 300
+	-- [port] ms to hold each battle effect-text frame; see jywar.lua.
+	CC.EffectTextMS = tonumber(os.getenv('JY_EFFECT_TEXT_MS')) or 40
 	CC.DirectX = {
 		0,
 		1,
@@ -2758,7 +2760,7 @@ function SetGlobalConst()
 
 	CC.ThingGapOut = 10
 	CC.ThingGapIn = 10
-	CC.StartMenuY = CC.ScreenH - 3 * (CC.StartMenuFontSize + CC.RowPixel) - 20
+	CC.StartMenuY = CC.ScreenH - 5 * (CC.StartMenuFontSize + CC.RowPixel) - 20  -- [port] was 3; too close to the bottom edge
 	CC.NewGameY = CC.ScreenH - 4 * (CC.NewGameFontSize + CC.RowPixel) - 10
 	CC.MainSubMenuX = CC.MainMenuX + 2 * CC.MenuBorderPixel + 2 * CC.DefaultFont + 5
 	CC.MainSubMenuY = CC.MainMenuY
