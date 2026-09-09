@@ -6,6 +6,7 @@
  */
 #include "engine.h"
 #include <iconv.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -276,17 +277,90 @@ static int l_FreeSur(lua_State *L) {
     return 0;
 }
 
-/* CharSet(s, mode): 0 = Big5 -> GBK when reading a data record,
- * 1 = GBK -> Big5 when writing one back (see Get/SetDataFromStruct). */
-static int l_CharSet(lua_State *L) {
-    size_t      n;
-    const char *s    = lua_tolstring(L, 1, &n);
-    int         mode = argi(L, 2, 0);
-    if (!s) {
-        lua_pushvalue(L, 1);
-        return 1;
+/* hzmb.dat -- the original engine's four conversion tables (sub_401850).
+ *
+ * Each is 32768 uint16 indexed by (lead - 0x80) * 256 + trail, and lib.CharSet
+ * (sub_402340 -> sub_4016E0) picks one by mode:
+ *
+ *   0  Big5 -> GBK      2  Big5 -> UTF-16
+ *   1  GBK  -> Big5     3  GBK  -> UTF-16
+ *
+ * The file is two blocks of (UTF-16 form, converted form) pairs with no
+ * header: the GBK side first (lead 0x81..0xFE, trail 0x40..0xFE skipping
+ * 0x7F), then the Big5 side (lead 0xA0..0xFE, trail 0x40..0x7E and
+ * 0xA1..0xFE). 126*190*4 + 95*157*4 = 155420 bytes, exactly the file's size.
+ *
+ * The distinction from a codepoint-exact iconv is not pedantry: this table
+ * pairs a Simplified character with its TRADITIONAL form -- 侠 <-> 俠,
+ * 遥 <-> 遙 -- so GBK -> Big5 -> GBK round-trips. iconv cannot, because Big5
+ * has no 侠 at all, and every unmapped character came back as "??". That
+ * silently broke the scripts that write a Simplified name into a record and
+ * compare it back, new-game name entry first among them: jymain.lua:340 loops
+ * `while JY.Person[0].姓名 == CC.NewPersonName`, and with CONFIG.PlayName
+ * "徐小侠" reading the field back gave "徐小??", so the loop body -- the whole
+ * pinyin input -- never ran and the step fell through on any key.
+ */
+#define CS_TBL_N 32768
+
+static uint16_t *g_cs_tbl[4]; /* [mode], NULL until hzmb.dat is loaded */
+
+/* Mirrors sub_401850's two nested loops, including their byte ranges. */
+static bool cs_load_tables(const char *path) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return false;
+
+    uint16_t *t[4];
+    for (int i = 0; i < 4; i++) {
+        t[i] = (uint16_t *)calloc(CS_TBL_N, sizeof(uint16_t));
+        if (!t[i]) {
+            for (int j = 0; j < i; j++) free(t[j]);
+            fclose(f);
+            return false;
+        }
     }
 
+    bool ok = true;
+    for (int pass = 0; pass < 2 && ok; pass++) {
+        int lo = pass == 0 ? 0x81 : 0xA0;
+        for (int lead = lo; lead <= 0xFE && ok; lead++) {
+            for (int trail = 0x40; trail <= 0xFE; trail++) {
+                if (pass == 0 ? trail == 0x7F : (trail > 0x7E && trail < 0xA1)) continue;
+                unsigned char b[4];
+                if (fread(b, 1, 4, f) != 4) {
+                    ok = false;
+                    break;
+                }
+                int idx = (lead - 0x80) * 256 + trail;
+                /* uni = the UTF-16 table (modes 3 and 2), cvt = 1 and 0 */
+                t[pass == 0 ? 3 : 2][idx] = (uint16_t)(b[0] | (b[1] << 8));
+                t[pass == 0 ? 1 : 0][idx] = (uint16_t)(b[2] | (b[3] << 8));
+            }
+        }
+    }
+    fclose(f);
+
+    if (!ok) {
+        for (int i = 0; i < 4; i++) free(t[i]);
+        return false;
+    }
+    for (int i = 0; i < 4; i++) g_cs_tbl[i] = t[i];
+    return true;
+}
+
+void jy_charset_init(const char *root) {
+    char path[1024];
+    snprintf(path, sizeof path, "%shzmb.dat", root && *root ? root : "./");
+    if (cs_load_tables(path))
+        jy_log("charset: hzmb.dat loaded (GBK <-> Big5 via the original table)");
+    else
+        jy_log("charset: %s missing or short -- falling back to iconv, which "
+               "cannot round-trip Simplified-only characters",
+               path);
+}
+
+/* iconv stand-in for a missing hzmb.dat. Kept so a game/ without the file
+ * still runs, with the "??" behaviour this port had before the table. */
+static int cs_iconv(lua_State *L, const char *s, size_t n, int mode) {
     iconv_t cd = (mode == 0) ? iconv_open("GBK", "BIG5") : iconv_open("BIG5", "GBK");
     if (cd == (iconv_t)-1) {
         lua_pushvalue(L, 1);
@@ -302,13 +376,7 @@ static int l_CharSet(lua_State *L) {
         /* Unmappable character. Both Big5 and GBK use lead bytes >= 0x81 for
          * two-byte characters, so consume the WHOLE character and emit one
          * '?' per byte -- skipping a single byte would land mid-character and
-         * corrupt everything after it. hzmb.dat, the original engine's
-         * conversion table, stores missing entries as the two bytes "??" for
-         * exactly this reason.
-         *
-         * This is reachable in normal play: FINALWORK2 assigns the Simplified
-         * literal "逍遥子" to a record holding Traditional Big5, and 遥 has no
-         * Big5 form. */
+         * corrupt everything after it. */
         size_t step = (il >= 2 && (unsigned char)*ip >= 0x81) ? 2 : 1;
         ip += step;
         il -= step;
@@ -319,6 +387,55 @@ static int l_CharSet(lua_State *L) {
     }
     iconv_close(cd);
     lua_pushlstring(L, out, (size_t)(op - out));
+    free(out);
+    return 1;
+}
+
+/* CharSet(s, mode): 0 = Big5 -> GBK when reading a data record,
+ * 1 = GBK -> Big5 when writing one back (see Get/SetDataFromStruct).
+ *
+ * sub_4016E0 verbatim: walk to the first NUL, pass ASCII through, look up
+ * every lead >= 0x80 with the byte after it, emit "??" for a zero entry or an
+ * unknown mode, and emit a single '?' and stop when a lead byte ends the
+ * string. Modes 2 and 3 write UTF-16, so they also pad ASCII with a zero byte
+ * -- and, as in the original, the lua_pushstring that returns the result then
+ * truncates at that byte. No script asks for them. */
+static int l_CharSet(lua_State *L) {
+    size_t      n;
+    const char *s    = lua_tolstring(L, 1, &n);
+    int         mode = argi(L, 2, 0);
+    if (!s) {
+        lua_pushvalue(L, 1);
+        return 1;
+    }
+    if (mode >= 0 && mode < 4 && !g_cs_tbl[mode]) return cs_iconv(L, s, n, mode);
+
+    const unsigned char *p   = (const unsigned char *)s;
+    char                *out = (char *)malloc(n * 2 + 4);
+    char                *o   = out;
+    while (*p) {
+        if (*p >= 0x80) {
+            if (!p[1]) { /* lead byte with nothing after it */
+                *o++ = '?';
+                break;
+            }
+            uint16_t v =
+                (mode >= 0 && mode < 4) ? g_cs_tbl[mode][(p[0] - 0x80) * 256 + p[1]] : 0;
+            if (v) {
+                *o++ = (char)(v & 0xFF);
+                *o++ = (char)(v >> 8);
+            } else {
+                *o++ = '?';
+                *o++ = '?';
+            }
+            p += 2;
+        } else {
+            *o++ = (char)*p++;
+            if (mode >= 2) *o++ = 0;
+        }
+    }
+    *o = 0;
+    lua_pushstring(L, out);
     free(out);
     return 1;
 }

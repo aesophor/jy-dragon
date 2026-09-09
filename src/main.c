@@ -234,6 +234,9 @@ int main(int argc, char **argv) {
     jy_open_lib(L);
     jy_open_byte(L);
 
+    /* LoadMB() in the original main(), between InitGame and Lua_Main. */
+    jy_charset_init("./");
+
     /* The real engine loads ./script/jymain.lua then calls JY_Main(). */
     if (!run_file(L, "script/jymain.lua")) {
         /* fall back to the decompiled tree if the packed one is absent */

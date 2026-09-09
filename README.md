@@ -40,7 +40,7 @@ So a self-contained bundle is:
       Makefile  run.sh  src/
       build/          <- objects + jyengine (gitignored)
       game/           <- assets (committed)
-        CONFIG.lua
+        CONFIG.lua  hzmb.dat
         data/  font/  pic/  save/  script/  sound/
 
 `game/` is ~297 MB and is committed, so a clone has everything it needs to
@@ -58,7 +58,7 @@ a different install, or to refresh it after patching the mod:
     D=port/game; mkdir -p $D
     cp -R DATA $D/data;  cp -R SOUND $D/sound; cp -R FONT $D/font
     cp -R PIC  $D/pic;   cp -R save  $D/save;  cp -R script $D/script
-    cp CONFIG.lua $D/
+    cp CONFIG.lua hzmb.dat $D/
 
 Environment variables, for automated runs:
 
@@ -214,11 +214,14 @@ string byte lengths -- a 1:1 map cannot move any text.
 
 Two things to know about the result:
 
-- It also converts **data-file** text, which is Big5 and already Traditional.
-  Measured against the dialogue archive, that alters 0.36% of characters
-  (11 of 3071), and 4 of the 5 distinct cases are corrections of Simplified
-  leakage in the data itself (`体` -> `體`, `划` -> `劃`, `涌` -> `湧`). The
-  odd one out is `苧` -> `薴`.
+- It also converts **data-file** text, and that is now the main thing it does.
+  `lib.CharSet(s, 0)` hands every record and dialogue string to the scripts in
+  its *Simplified* form -- `hzmb.dat` pairs Big5 俠 with GBK 侠, not with GBK's
+  own 俠 -- so with `CONFIG.Traditional = 0` data text renders Simplified,
+  matching the mod's own literals, and with `1` both come out Traditional.
+  (An earlier measurement here, 0.36% of dialogue characters altered, was taken
+  when `CharSet` was a codepoint conversion that left data text Traditional. It
+  no longer describes the input.)
 - Character-level conversion cannot disambiguate by context, so a Traditional
   `干` or `后` in data would be mapped to `幹`/`後`. Neither appeared in the
   sampled text, but the limitation is real.
@@ -292,11 +295,11 @@ Audio works: looping music and cached sound effects.
 Battle maps work: terrain, scenery, movement-range shading and unit sprites.
 
 `SaveRecord` is verified end to end by `JY_TEST_SAVEREC` (slot 1 -> 9, reload,
-then a byte-level diff of every record): exactly one field differs, and that is
-`FINALWORK2` deliberately assigning the Simplified literal `"逍遥子"` to a
-record holding Traditional Big5 -- 遥 has no Big5 form, so it degrades to
-`逍??子`, matching the original engine (`hzmb.dat` stores unmappable entries as
-the two bytes `??`).
+then a byte-level diff): `cmp -l save/r1.grp save/r9.grp` reports **zero**
+differing bytes. That last byte came from `FINALWORK2` assigning the Simplified
+literal `"逍遥子"` to a record holding Traditional Big5; it survives now that
+`lib.CharSet` uses the original's `hzmb.dat` table, which pairs 遥 with 遙
+instead of failing on it -- see [CharSet's conversion table](#charsets-conversion-table-recovered-verified).
 
 `JY_TEST_SWEEP` is clean across the full data surface: 4024/4024 dialogue
 records, 137/137 scenes, 129/129 battle maps, 10/10 save slots, zero errors.
@@ -448,6 +451,51 @@ Two deliberate deviations, both strictly narrower than a crash: `setstr`
 keeps `luaL_checklstring` for the string, because the original passes
 `lua_tolstring`'s `NULL` straight to `strlen`; and the offsets stay
 bounds-checked, since the original would just scribble outside the buffer.
+
+### `CharSet`'s conversion table (recovered, verified)
+
+`lib.CharSet` is **not** a codepoint conversion, and iconv cannot stand in for
+it. `sub_402340` hands the string to `sub_4016E0`, which is a table lookup:
+
+    v6 = table[mode][256 * lead - 0x8000 + trail]   ; (lead - 0x80) * 256 + trail
+    if (!v6) { *a2 = '?'; a2[1] = '?'; }            ; unmapped -> "??"
+    else *(WORD *)a2 = v6
+
+Four tables, picked by `mode`:
+
+| mode | direction | table |
+|---|---|---|
+| 0 | Big5 -> GBK | `word_41CCE0` |
+| 1 | GBK -> Big5 | `word_40CCE0` |
+| 2 | Big5 -> UTF-16 | `word_42CCE0` |
+| 3 | GBK -> UTF-16 | `word_43CCE0` |
+
+`sub_401850` (`LoadMB()` in `main`) fills all four from `<root>hzmb.dat`, which
+has no header: two blocks of `(UTF-16 form, converted form)` `uint16` pairs,
+the GBK side first (lead `0x81..0xFE`, trail `0x40..0xFE` skipping `0x7F`),
+then the Big5 side (lead `0xA0..0xFE`, trail `0x40..0x7E` and `0xA1..0xFE`).
+That is `126*190*4 + 95*157*4 = 155420` bytes -- exactly the file's size, which
+is what confirms the layout.
+
+What the table does that a charset converter cannot is pair a Simplified
+character with its **Traditional** form: 侠 <-> 俠, 遥 <-> 遙. So GBK -> Big5 ->
+GBK round-trips, and `iconv` cannot, because Big5 has no 侠 at all.
+
+That difference is not cosmetic. Scripts write a Simplified literal into a
+record and compare it back, and with iconv every such comparison lost:
+
+    -- jymain.lua:338, new game
+    JY.Person[0].姓名 = CC.NewPersonName            -- "徐小侠"
+    while JY.Person[0].姓名 == CC.NewPersonName do  -- reads back "徐小??"
+      JY.Person[0].姓名 = Shurufa(...)              -- the pinyin input
+    end
+
+The condition was false on the first test, so the loop body -- the entire name
+entry -- never ran, and the step fell through on whatever key dismissed the
+`请选择你的主角姓名` prompt. With the table it round-trips and the input runs.
+
+`src/lib.c` keeps an iconv fallback for a `game/` without `hzmb.dat`, and says
+so in the log.
 
 ### `FillColor`'s zero rect (recovered, verified)
 
@@ -638,7 +686,9 @@ Both files hold 137 scenes, matching the 137 `Scene_S` records in a save.
   against `-1`; none compare against 0.
 - `Byte.setstr(buf, off, len, str)` puts the field width **before** the string.
 - `lib.CharSet(s, 0)` is Big5 -> GBK (reading a record); `(s, 1)` is the reverse
-  (writing one back). Neither is a no-op.
+  (writing one back). Neither is a no-op, and **neither is a codepoint
+  conversion**: both go through `hzmb.dat`, which pairs each Simplified
+  character with its Traditional form, so the two directions are inverses.
 - `CONFIG.Operation` picks the key profile: 0 (Windows) wants SDL 1.2 arrow
   codes 273-276, 1 (android) wants SDL2/SDL3 codes. Enter/Esc/letters are the
   same in both, so only arrows need translating.
@@ -671,6 +721,9 @@ install: `script/` and `pic/` must exist **on disk**, because the Windows build
 served them out of Enigma's virtual filesystem. They came from
 `../_re/script_source/` and `../_re/PIC/`, which is also where to regenerate
 them from.
+
+`hzmb.dat` is the original engine's GBK/Big5 conversion table, loaded verbatim
+by `lib.CharSet`; it comes from the install root, next to `Dragon.exe`.
 
 These assets are grgame's mod and Jinyong's IP. They are committed for
 convenience on a private remote; do not redistribute them.

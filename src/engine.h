@@ -30,8 +30,9 @@ static inline uint32_t jy_rgb(uint32_t c, uint8_t a) {
 }
 
 /* ---- module registration ------------------------------------------------ */
-void jy_open_lib(lua_State *L);  /* the 46-function `lib` table  */
-void jy_open_byte(lua_State *L); /* the 11-function `Byte` table */
+void jy_open_lib(lua_State *L);         /* the 46-function `lib` table  */
+void jy_open_byte(lua_State *L);        /* the 11-function `Byte` table */
+void jy_charset_init(const char *root); /* load hzmb.dat for lib.CharSet */
 
 /* ---- graphics ----------------------------------------------------------- */
 bool         jy_gfx_init(int w, int h, const char *title);
