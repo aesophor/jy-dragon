@@ -2,3 +2,4 @@
 build/
 game/port_debug.txt
 game/save/
+__pycache__/
