@@ -159,4 +159,50 @@ static const char *JY_COMPAT_LUA =
     "    if it and it[2] == Menu_zhanzhu then it[3] = 0 end\n"
     "  end\n"
     "  return _ShowMenu(m, n, ...)\n"
+    "end\n"
+    /* ---------------------------------------------------------------------- *
+     * Hold the battle effect text ("击中破绽", "葵花移形", ...) on screen long
+     * enough to read.
+     *
+     * War_ShowFight redraws the text once per frame for a fixed 20 frames
+     * (jywar.lua:20838). When the skill has an effect animation the frame is
+     * paced -- lib.Delay(2 * CC.Frame), 60ms (20893). When it has only text,
+     * the same frame gets lib.Delay(1) (20897), so the loop runs as fast as
+     * the blits do. That was self-limiting on the original: SDL 1.2 software
+     * blits plus an uncached SDL_ttf render cost tens of milliseconds a frame.
+     * Here a frame costs about one, and 20 of them are a flicker.
+     *
+     * So this is not a wrong value in the script, it is an animation with no
+     * clock. Give it one: a floor on how soon the *next* frame may be
+     * presented after an effect-text frame. Arm on the KungfuString calls
+     * that draw it -- rows 1..4 are the four 特效文字 slots and nothing
+     * else, the skill name and the combo text both use row 0 (20492, 20498).
+     *
+     * Because the floor measures from the present and subtracts what the
+     * script already waited, the animated branch keeps its own 60ms and only
+     * the unpaced branches are padded. 20 frames x 40ms is about 800ms of
+     * legible text; JY_EFFECT_TEXT_MS retunes it without a rebuild, and 0
+     * restores the original timing.
+     * ---------------------------------------------------------------------- */
+    "local EFF_MS = tonumber(os.getenv('JY_EFFECT_TEXT_MS')) or 40\n"
+    "local eff_shown, eff_armed = nil, false\n"
+    "local _KungfuString = KungfuString\n"
+    "function KungfuString(s, x, y, c, size, font, row)\n"
+    "  if s ~= nil and type(row) == 'number' and row >= 1 then\n"
+    "    eff_armed = true\n"
+    "  end\n"
+    "  return _KungfuString(s, x, y, c, size, font, row)\n"
+    "end\n"
+    "local _ShowSurface = lib.ShowSurface\n"
+    "function lib.ShowSurface(mode)\n"
+    "  if eff_shown then\n"
+    "    local dt = lib.GetTime() - eff_shown\n"
+    "    if dt >= 0 and dt < EFF_MS then lib.Delay(EFF_MS - dt) end\n"
+    "    eff_shown = nil\n"
+    "  end\n"
+    "  _ShowSurface(mode)\n"
+    "  if eff_armed then\n"
+    "    eff_armed = false\n"
+    "    eff_shown = lib.GetTime()\n"
+    "  end\n"
     "end\n";

@@ -65,6 +65,7 @@ Environment variables, for automated runs:
 | `JY_TEST_SWEEP=1` | exercise the whole data surface: every dialogue record, scene, battle map and save slot |
 | `JY_TEST_FADE=1` | check `ShowSlow`'s end states and timing |
 | `JY_LOOPSTATS=1` | log the real main-loop rate and resulting NPC animation fps once a second |
+| `JY_EFFECT_TEXT_MS=n` | ms to hold each battle effect-text frame (default 40; 0 restores the script's own timing) |
 
 ## .app bundle
 
