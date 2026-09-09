@@ -118,6 +118,46 @@ out save and load in scenes 42, 82 and 13, so nothing downstream shifts.
 Deleting the table entry instead would renumber everything after it and break
 those tests.
 
+## Save-list dates ran past the right border
+
+`jymain.lua:9903`, `9909` -- the two row formats in `SaveList`
+`jymain.lua:212`, `1960`, `1978` -- the matching header, three call sites
+
+The 存档时间 column's seconds sat on top of the menu's right border, 17px
+outside it.
+
+`ShowMenu` auto-sizes the box from the longest entry, in bytes:
+
+    var_112_0 = arg_112_9 * var_112_6 / 2 + 2 * CC.MenuBorderPixel
+
+That models one byte as half a font width, which is right for GBK -- a CJK
+character is two bytes and one font width, ASCII is one byte and half. The
+rows come to 79 bytes, so the box is sized for exactly the text it holds,
+with `CC.MenuBorderPixel` (5px) of slack at each end. Glyph advances round up
+by a fraction each, and over the ~65 glyphs in a row that eats the 5px and
+spills 2px more. The stored date is 20 bytes of it (`'2023-05-28 20:58:11`,
+`data/CircleNum` at `2000 + 20 * slot`), which is why that column is where it
+shows.
+
+Trimming padding alone cannot fix this: the box is measured from the same
+string, so the border moves in by exactly as much as the text does. The fix
+needs both halves --
+
+- **narrow 姓名** from `%-11s` to `%-9s`, which shifts every column from 年龄
+  to 存档时间 two half-widths left (the field it pads is 10 bytes, and Lua's
+  width is a minimum, so a long name costs alignment on that row, never
+  truncation);
+- **append two spaces** to the format. They count toward `string.len`, so the
+  box keeps its original width while the visible text no longer reaches it.
+
+Net byte count is unchanged, so the border stays where it was and the text
+moves off it. Measured from a snapshot of the real menu, rendered by driving
+the load screen with `JY_KEYS="0,274,13"`: clear space at the right border
+went from **-17px to +12px**, with the box edge fixed at x=1186.5.
+
+The header's 姓名 field goes `%-10s` to `%-8s`, one byte narrower than the
+rows' as it already was, so the labels stay over their columns.
+
 ## What stays in src/compat.lua.h
 
 Three shims, none of which are things the mod gets wrong -- editing its source
