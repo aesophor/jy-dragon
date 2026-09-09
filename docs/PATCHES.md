@@ -206,6 +206,26 @@ column is 2 (`%-2s` on a number like 15), so the title is wider than the
 data. It sits one half-width further left than before, which is the cost of
 putting 门派 on its values.
 
+### The stored date came back with a stray quote
+
+`jymain.lua:9898` -- strip the quotes when reading the date
+
+`SaveRecord` wraps the timestamp in single quotes on both sides before
+writing it (`4337`):
+
+    local var_73_3 = os.date("%Y-%m-%d %H:%M:%S")   -- 19 chars
+    local var_73_4 = "'" .. var_73_3 .. "'"          -- 21
+
+but `SaveList` reads back only 20 bytes (`9895`), so the closing quote is
+truncated and the opening one survives into the column. Strip both on read
+with a `gsub`, which fixes existing saves as well as new ones and leaves the
+bytes on disk untouched, so saves stay interchangeable with the Windows
+build.
+
+The date is a byte shorter now, so the row format takes one more trailing
+space to stay at 79 bytes and keep the two borders where they are (measured
+unchanged at 31.0..1185.5 against 31.0..1186.5).
+
 `instruct_15` draws a seventh, narrower variant of this header
 (`jymain.lua:7089`, `"%-6s %-10s %-2s %6s %12s %-6s %-10s"`) over the same
 `SaveList` rows, with its box x computed from 25 rather than 38.5 font

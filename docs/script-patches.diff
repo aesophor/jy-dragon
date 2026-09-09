@@ -69,19 +69,25 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jymain.lua ga
  
  	local var_39_2 = SaveList()
  
-@@ -9896,13 +9900,13 @@
+@@ -9891,18 +9895,18 @@
+ 		local var_275_18 = read_files(string.format(CC.CircleFile, iter_275_1), 2000 + 20 * iter_275_1, 20)
+ 
+ 		if var_275_18 ~= nil then
+-			yxsdate[iter_275_1] = var_275_18
++			yxsdate[iter_275_1] = string.gsub(var_275_18, "'", "")  -- [port] see docs/PATCHES.md
+ 		end
  
  		if iter_275_1 == 10 then
  			var_275_5[iter_275_1] = {
 -				string.format("自动档%02d %-11s %-2s %-4s %5s %9s %-6s %-6s", iter_275_1, var_275_6, var_275_10, var_275_11, var_275_12, var_275_8, var_275_9, yxsdate[iter_275_1]),
-+				string.format("自动档%02d %-9s %-2s %-4s %5s %9s %-6s %-6s  ", iter_275_1, var_275_6, var_275_10, var_275_11, var_275_12, var_275_8, var_275_9, yxsdate[iter_275_1]),  -- [port] see docs/PATCHES.md
++				string.format("自动档%02d %-9s %-2s %-4s %5s %9s %-6s %-6s   ", iter_275_1, var_275_6, var_275_10, var_275_11, var_275_12, var_275_8, var_275_9, yxsdate[iter_275_1]),  -- [port] see docs/PATCHES.md
  				nil,
  				1
  			}
  		else
  			var_275_5[iter_275_1] = {
 -				string.format("  存档%02d %-11s %-2s %-4s %5s %9s %-6s %-6s", iter_275_1, var_275_6, var_275_10, var_275_11, var_275_12, var_275_8, var_275_9, yxsdate[iter_275_1]),
-+				string.format("  存档%02d %-9s %-2s %-4s %5s %9s %-6s %-6s  ", iter_275_1, var_275_6, var_275_10, var_275_11, var_275_12, var_275_8, var_275_9, yxsdate[iter_275_1]),  -- [port] see docs/PATCHES.md
++				string.format("  存档%02d %-9s %-2s %-4s %5s %9s %-6s %-6s   ", iter_275_1, var_275_6, var_275_10, var_275_11, var_275_12, var_275_8, var_275_9, yxsdate[iter_275_1]),  -- [port] see docs/PATCHES.md
  				nil,
  				1
  			}
