@@ -281,6 +281,149 @@ Verified by probing `PlayMIDI` at startup: id 9002 resolved to
 `game11.mp3`. The count probed as 3. The `WarMain` hook itself is not covered
 -- there is no harness that enters a battle, so it needs a real fight.
 
+## The 佣兵 management menu was unreachable
+
+`jymain.lua:1360` -- a 佣兵 entry in `MMenu`
+`jyyb.lua:2` -- the "no mercenaries" check looks at every slot
+`jyyb.lua:22` -- 状态 and 物品 dropped from the menu
+`jyyb.lua:34`, `253`, `274` -- 放逐 renamed to 解雇
+`jyyb.lua:282` -- 解雇 no longer blanks a named NPC
+
+`jyyb.lua` opens with `Yb()`, a four-entry menu -- 状态, 物品, 出战, 放逐 --
+and 放逐 -- now 解雇 -- (`Ybld_Status`) is a complete dismissal: it unequips weapon, armour
+and training item and releases each one's 使用人, cancels 佣兵出战 if that
+mercenary held it, clears the slot and compacts 1..3.
+
+`Yb` appeared exactly once in all 20 scripts: its own `function Yb()` line.
+Nothing ever called it, so the only way to lose a 保镖 was one of the game's
+three involuntary paths -- failing to pay on their pay day
+(`OEvent6001:1970`), the scripted party-stripping down the well
+(`OEvent9001:8583`), or a quest releasing its own (`9324`). Hanging `Yb` off
+`MMenu` next to 离队 also brings back 出战 (`Ybcz`), which was orphaned the
+same way.
+
+Two things had to change before that menu was safe to expose.
+
+**`Ybld_Status` blanked the person record** by copying template 597 over it.
+That is right for the three scratch slots `sjyb` generates random mercenaries
+into (594-596), and destructive for anything else: a 保镖 hired from an event
+is a *named NPC* -- 647 is 镖师张海, and 417, 418, 648-655 are others -- so
+dismissing one would have overwritten that character permanently in the save.
+
+Named NPCs are now released the way the game's own code releases them, by
+clearing 佛学修为. That field is the "currently engaged" flag, and the
+evidence is consistent across all three sites that touch it: the hire sets
+`佛学修为 = 1` alongside `儒学修为 = JY.DAY` (pay day) and `盗贼技巧 = 950`
+(monthly salary) (`OEvent9001:9868`); the can't-pay dismissal clears it
+before clearing the slot (`OEvent6001:1975`); and re-hiring into an occupied
+slot clears the outgoing mercenary's (`OEvent9001:9838`). So a dismissed
+保镖 becomes re-hireable, which is what those sites intend.
+
+In practice only the `else` branch runs today, since `sjyb` is orphaned too
+and nothing puts anyone in 594-596. The original path is kept for it rather
+than deleted.
+
+The entry is 解雇 rather than the original 放逐 ("banish"), and the
+confirmation reads 已将<name>解雇 rather than 将<name>驱逐出队伍 -- these are
+hired hands, not exiles. Written Simplified in the source as everything here
+is, so the s2t pass renders them 解僱 and 已將…解僱; `雇` -> `僱` is in
+`src/s2t_table.h` and all three characters are in the font. (Simplified `将`
+is *not* in the font -- it only ever reaches the renderer as `將` -- which is
+a neat demonstration of why that pass exists.)
+
+The menu ships with two of the original four entries, 出战 and 解雇; 状态 and
+物品 are dropped. Deleting the rows outright is safe here where it was not for
+打赏&赞助 -- `Yb` passes `#var_1_0` as the count and discards `ShowMenu`'s
+return, so no index survives the removal to be renumbered.
+
+That leaves `Yb_Menu_Status` and `Yb_Menu_Thing` unreferenced, and with them
+everything below: `Yb_ShowPersonStatus`, `Yb_ShowPersonStatus_sub`, `Yb_Thing`
+through `Yb_Thing3`, `Yb_UseThing`, `Yb_DefaultUseThing`. They stay in the
+file. Nothing else reaches them, so the 资质 fix below is now unreachable too
+-- kept because it is correct if 状态 is ever put back.
+
+**`Yb` tested only slot 1** for emptiness. The 保镖 hire menu lets you choose
+*which* slot to fill (`OEvent9001:9836-9853`), so slot 2 or 3 can hold
+someone while 1 is empty, and the menu would have refused to open. It now
+scans all `CC.YbNum` slots. `Yb_SelectTeamMenu` already handled gaps -- it
+builds all three rows and enables only the live ones -- so nothing else
+needed changing.
+
+Verified by lifting the new check into a stub harness and running every slot
+combination: refuses only when all three are empty, opens for
+`(-1, 647, -1)` and `(-1, -1, 647)` where the old one refused.
+
+## 自动出战 was ignored when you picked your own team
+
+`jywar.lua:7529` -- take the auto-battle mercenary without asking
+
+`Ybcz` (佣兵 -> 出战) sets `JY.Base.佣兵出战` to a mercenary who should join
+every fight. Only one of the two paths through `WarSelectTeam` honoured it.
+
+Battles that pre-pick their participants (`WAR.Data.自动选择参战人1`) reach
+the branch at `7414`, which adds `佣兵出战` and then returns early. Every
+other battle falls through to the manual path, which reset all the
+`WAR.YbPerson` flags, asked 是否带佣兵出战, and made you pick from a toggle
+menu -- so the setting did nothing exactly where it would save the most
+clicking.
+
+The manual path now checks for the auto-battle mercenary first and, finding
+one, places them and skips both prompts. It resolves them by *slot*, walking
+`JY.Base.佣兵1..3` for a match, which is also what makes a stale
+`佣兵出战` harmless -- and stale is reachable: `Ybld_Status` clears the flag
+when it dismisses that mercenary (`jyyb.lua:276`), but the event dismissals
+do not, neither the can't-pay path (`OEvent6001:1975`) nor the well
+(`OEvent9001:8583`). No matching slot means no match, and you get the prompt.
+
+Gated on `生命 > 0` as `Yb_SelectTeamMenu` is. Skipping the prompt removes the
+only chance to decline, so a dead mercenary falls through and you choose
+rather than fielding a corpse.
+
+Verified by lifting the new block into a stub harness:
+
+| case | result |
+|---|---|
+| no 佣兵出战 set | prompts, as before |
+| auto in slot 1 / 2 / 3, alive | added silently at that slot's coordinates |
+| auto set but 生命 == 0 | prompts |
+| auto stale, in no slot | prompts |
+
+## 佣兵 > 状态 crashed on a field that is not in the schema
+
+`jyyb.lua:860` -- drop the 资质 row
+
+(This panel is no longer reachable -- 状态 was dropped from the menu above.
+The fix stands for whenever it is put back.)
+
+`Yb_ShowPersonStatus_sub` draws 13 stat rows, and the last one killed the
+game as soon as the menu became reachable:
+
+    script/jymain.lua:4497: attempt to index local 'var_90_0' (a nil value)
+
+`JY.Person[i]` is an empty table whose metatable routes *every* key through
+the record schema (`jymain.lua:4134`): `__index` calls
+`GetDataFromStruct(..., CC.Person_S, key)` and `__newindex` calls
+`SetDataFromStruct`. Nothing is ever `rawset`, so a key that `CC.Person_S`
+does not define has nowhere to live -- `GetDataFromStruct` indexes the nil
+schema entry and dies. `资质` is such a key.
+
+It is not a typo, it is a field the mod uses and never declared. `sjyb` rolls
+one for a generated mercenary (`jyyb.lua:1516`) and scales 攻击力, 防御力 and
+轻功 from it; `MyOEvent` reads it twice (`9716`, `9973`). Every one of those
+would crash the same way -- `sjyb` is orphaned so it never runs, and the two
+`MyOEvent` sites are latent. This was never reachable before because `Yb`
+itself was not.
+
+Probed at runtime rather than by reading jyconst: the other twelve rows all
+resolve to real offsets (攻击力 106, 轻功 108, 防御力 110, 医疗能力 112,
+用毒能力 114, 解毒能力 116, 抗毒能力 118, 拳掌功夫 120, 御剑能力 122,
+耍刀技巧 124, 特殊兵器 126, 暗器技巧 128), and 资质 is the only key missing.
+
+Dropping the row is the contained fix. Declaring `资质` would mean claiming a
+byte offset in the 342-byte person record, which changes the save layout and
+would need the offset proven unused first; and it would not be worth doing
+for a stat only the orphaned random-mercenary generator ever sets.
+
 ## What stays in src/compat.lua.h
 
 Three shims, none of which are things the mod gets wrong -- editing its source

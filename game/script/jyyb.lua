@@ -1,28 +1,32 @@
 function Yb()
-	if JY.Base.佣兵1 == -1 then
+	-- [port] checking slot 1 alone is not enough now that this menu is
+	-- reachable: the 保镖 hire lets you choose which slot to fill, so 2 or
+	-- 3 can hold someone while 1 is empty.
+	local var_1_2 = false
+
+	for iter_1_0 = 1, CC.YbNum do
+		if JY.Base["佣兵" .. iter_1_0] >= 0 then
+			var_1_2 = true
+
+			break
+		end
+	end
+
+	if not var_1_2 then
 		QZXS("队伍里没有佣兵")
 
 		return
 	end
 
 	local var_1_0 = {
-		{
-			"状态",
-			Yb_Menu_Status,
-			1
-		},
-		{
-			"物品",
-			Yb_Menu_Thing,
-			1
-		},
+		-- [port] 状态 and 物品 removed; see docs/PATCHES.md.
 		{
 			"出战",
 			Ybcz,
 			1
 		},
 		{
-			"放逐",
+			"解雇",  -- [port] was 放逐/驱逐出队伍; see docs/PATCHES.md
 			Ybld_Status,
 			1
 		}
@@ -241,7 +245,7 @@ function Ybcz()
 end
 
 function Ybld_Status()
-	DrawStrBox(CC.MainSubMenuX * 1.9, CC.MainSubMenuY, "要将哪个佣兵放逐?", C_WHITE, CC.DefaultFont)
+	DrawStrBox(CC.MainSubMenuX * 1.9, CC.MainSubMenuY, "要将哪个佣兵解雇?", C_WHITE, CC.DefaultFont)  -- [port] was 放逐/驱逐出队伍; see docs/PATCHES.md
 
 	local var_5_0 = CC.MainSubMenuY + CC.SingleLineHeight
 	local var_5_1 = Yb_SelectTeamMenu(CC.MainSubMenuX, var_5_0)
@@ -262,7 +266,7 @@ function Ybld_Status()
 			JY.Person[JY.Base["佣兵" .. var_5_1]].修炼物品 = -1
 		end
 
-		QZXS("将" .. JY.Person[JY.Base["佣兵" .. var_5_1]].姓名 .. "驱逐出队伍")
+		QZXS("已将" .. JY.Person[JY.Base["佣兵" .. var_5_1]].姓名 .. "解雇")  -- [port] was 放逐/驱逐出队伍; see docs/PATCHES.md
 
 		if JY.Base.佣兵出战 == JY.Base["佣兵" .. var_5_1] then
 			JY.Base.佣兵出战 = -1
@@ -270,11 +274,23 @@ function Ybld_Status()
 			QZXS(JY.Person[JY.Base["佣兵" .. var_5_1]].姓名 .. "的自动出战已被取消")
 		end
 
-		for iter_5_0 = 1, #PSX - 8 do
-			JY.Person[JY.Base["佣兵" .. var_5_1]][PSX[iter_5_0]] = JY.Person[597][PSX[iter_5_0]]
+		-- [port] see docs/PATCHES.md. Blanking the record from template 597
+		-- is only safe for the three scratch slots sjyb generates into. A
+		-- 保镖 hired from an event is a named NPC, and overwriting one would
+		-- destroy that character in the save. Release those the way the
+		-- game's own dismissals do, by clearing the 佛学修为 "engaged" flag.
+		local var_5_2 = JY.Base["佣兵" .. var_5_1]
+
+		if var_5_2 >= 594 and var_5_2 <= 596 then
+			for iter_5_0 = 1, #PSX - 8 do
+				JY.Person[var_5_2][PSX[iter_5_0]] = JY.Person[597][PSX[iter_5_0]]
+			end
+
+			JY.Person[var_5_2].姓名 = JY.Person[597].姓名
+		else
+			JY.Person[var_5_2].佛学修为 = 0
 		end
 
-		JY.Person[JY.Base["佣兵" .. var_5_1]].姓名 = JY.Person[597].姓名
 		JY.Base["佣兵" .. var_5_1] = -1
 
 		if var_5_1 == 1 then
@@ -836,7 +852,7 @@ function Yb_ShowPersonStatus_sub(arg_13_0, arg_13_1)
 		var_13_23("特殊兵器", C_WHITE, C_GOLD)
 		var_13_23("暗器技巧", C_WHITE, C_GOLD)
 		var_13_23("抗毒能力", C_WHITE, C_GOLD)
-		var_13_23("资质", C_WHITE, C_GOLD)
+		-- [port] 资质 row removed; see docs/PATCHES.md.
 	elseif arg_13_1 == 2 then
 		var_13_22 = var_13_22 + 1
 

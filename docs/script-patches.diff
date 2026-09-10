@@ -58,7 +58,20 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jymain.lua ga
  
  		local var_9_5 = SaveList()
  
-@@ -1378,7 +1382,7 @@
+@@ -1354,6 +1358,12 @@
+ 			1
+ 		},
+ 		{
++			-- [port] Yb was never called; see docs/PATCHES.md.
++			"佣兵",
++			Yb,
++			1
++		},
++		{
+ 			"系统",
+ 			Menu_System,
+ 			1
+@@ -1378,7 +1388,7 @@
  		{
  			"打赏&赞助",
  			Menu_zhanzhu,
@@ -67,7 +80,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jymain.lua ga
  		},
  		{
  			"游戏调速",
-@@ -1953,7 +1957,7 @@
+@@ -1953,7 +1963,7 @@
  	local var_38_0 = (CC.ScreenW - 38.5 * CC.FontSmall3 - 2 * CC.MenuBorderPixel) / 3
  	local var_38_1 = (CC.ScreenH - 1 * (CC.FontSmall3 + CC.RowPixel)) / 3
  
@@ -76,7 +89,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jymain.lua ga
  
  	local var_38_2 = SaveList()
  
-@@ -1971,7 +1975,7 @@
+@@ -1971,7 +1981,7 @@
  	local var_39_0 = (CC.ScreenW - 38.5 * CC.FontSmall3 - 2 * CC.MenuBorderPixel) / 3
  	local var_39_1 = (CC.ScreenH - 1 * (CC.FontSmall3 + CC.RowPixel)) / 3
  
@@ -85,7 +98,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jymain.lua ga
  
  	local var_39_2 = SaveList()
  
-@@ -4863,7 +4867,14 @@
+@@ -4863,7 +4873,14 @@
  		return
  	end
  
@@ -101,7 +114,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jymain.lua ga
  		lib.PlayMIDI(string.format(CC.MIDIFile, arg_108_0))
  	end
  end
-@@ -9891,18 +9902,18 @@
+@@ -9891,18 +9908,18 @@
  		local var_275_18 = read_files(string.format(CC.CircleFile, iter_275_1), 2000 + 20 * iter_275_1, 20)
  
  		if var_275_18 ~= nil then
@@ -126,7 +139,44 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jymain.lua ga
 diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua game/script/jywar.lua
 --- pristine
 +++ ported
-@@ -17182,6 +17182,17 @@
+@@ -7526,7 +7526,35 @@
+ 		WAR.YbPerson[iter_39_9] = 0
+ 	end
+ 
+-	if (JY.Base.佣兵1 > -1 or JY.Base.佣兵2 > -1 or JY.Base.佣兵3 > -1) and DrawStrBoxYesNo(-1, -1, "是否带佣兵出战？", C_WHITE, CC.DefaultFont) == true then
++	-- [port] 自动出战. Ybcz sets JY.Base.佣兵出战 to a mercenary who should
++	-- join every fight, but only the scripted auto-select path above honoured
++	-- it (7414). The manual path asked 是否带佣兵出战 and then made you pick
++	-- all over again. Take them without asking and skip both prompts.
++	--
++	-- Gated on 生命 > 0 the way Yb_SelectTeamMenu is: with no prompt there is
++	-- no way to decline, so a dead mercenary falls through and you choose.
++	local var_39_13 = -1
++
++	if JY.Base.佣兵出战 > -1 and JY.Person[JY.Base.佣兵出战].生命 > 0 then
++		for iter_39_12 = 1, CC.YbNum do
++			if JY.Base["佣兵" .. iter_39_12] == JY.Base.佣兵出战 then
++				var_39_13 = iter_39_12
++
++				break
++			end
++		end
++	end
++
++	if var_39_13 > 0 then
++		WAR.YbPerson[var_39_13] = 1
++		WAR.Person[WAR.PersonNum].人物编号 = JY.Base.佣兵出战
++		WAR.Person[WAR.PersonNum].我方 = true
++		WAR.Person[WAR.PersonNum].坐标X = WAR.Data["我方X" .. var_39_13] + 1
++		WAR.Person[WAR.PersonNum].坐标Y = WAR.Data["我方Y" .. var_39_13]
++		WAR.Person[WAR.PersonNum].死亡 = false
++		WAR.Person[WAR.PersonNum].人方向 = 2
++		WAR.PersonNum = WAR.PersonNum + 1
++	elseif (JY.Base.佣兵1 > -1 or JY.Base.佣兵2 > -1 or JY.Base.佣兵3 > -1) and DrawStrBoxYesNo(-1, -1, "是否带佣兵出战？", C_WHITE, CC.DefaultFont) == true then
+ 		local var_39_8 = {}
+ 
+ 		for iter_39_10 = 1, CC.YbNum do
+@@ -17182,6 +17210,17 @@
  		return false
  	end
  
@@ -144,7 +194,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  	CleanMemory()
  	lib.PicInit()
  	lib.ShowSlow(20, 1)
-@@ -20599,9 +20610,8 @@
+@@ -20599,9 +20638,8 @@
  
  					ShowScreen()
  
@@ -156,7 +206,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  
  					lib.LoadSur(var_122_34, CC.ScreenW / 2 - 5 * CC.XScale, CC.ScreenH / 2 - var_122_22 - 18 * CC.YScale)
  				end
-@@ -20895,7 +20905,7 @@
+@@ -20895,7 +20933,7 @@
  		elseif var_122_65 then
  			lib.ShowSurface(0)
  			lib.LoadSur(var_122_63, var_122_55, var_122_57)
@@ -164,4 +214,106 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
 +			lib.Delay(CC.EffectTextMS)  -- [port] was 1; the branch above uses 2 * CC.Frame
  		end
  	end
+ 
+diff -ru --label pristine --label ported ../_re/script_source_utf8/jyyb.lua game/script/jyyb.lua
+--- pristine
++++ ported
+@@ -1,28 +1,32 @@
+ function Yb()
+-	if JY.Base.佣兵1 == -1 then
++	-- [port] checking slot 1 alone is not enough now that this menu is
++	-- reachable: the 保镖 hire lets you choose which slot to fill, so 2 or
++	-- 3 can hold someone while 1 is empty.
++	local var_1_2 = false
++
++	for iter_1_0 = 1, CC.YbNum do
++		if JY.Base["佣兵" .. iter_1_0] >= 0 then
++			var_1_2 = true
++
++			break
++		end
++	end
++
++	if not var_1_2 then
+ 		QZXS("队伍里没有佣兵")
+ 
+ 		return
+ 	end
+ 
+ 	local var_1_0 = {
++		-- [port] 状态 and 物品 removed; see docs/PATCHES.md.
+ 		{
+-			"状态",
+-			Yb_Menu_Status,
+-			1
+-		},
+-		{
+-			"物品",
+-			Yb_Menu_Thing,
+-			1
+-		},
+-		{
+ 			"出战",
+ 			Ybcz,
+ 			1
+ 		},
+ 		{
+-			"放逐",
++			"解雇",  -- [port] was 放逐/驱逐出队伍; see docs/PATCHES.md
+ 			Ybld_Status,
+ 			1
+ 		}
+@@ -241,7 +245,7 @@
+ end
+ 
+ function Ybld_Status()
+-	DrawStrBox(CC.MainSubMenuX * 1.9, CC.MainSubMenuY, "要将哪个佣兵放逐?", C_WHITE, CC.DefaultFont)
++	DrawStrBox(CC.MainSubMenuX * 1.9, CC.MainSubMenuY, "要将哪个佣兵解雇?", C_WHITE, CC.DefaultFont)  -- [port] was 放逐/驱逐出队伍; see docs/PATCHES.md
+ 
+ 	local var_5_0 = CC.MainSubMenuY + CC.SingleLineHeight
+ 	local var_5_1 = Yb_SelectTeamMenu(CC.MainSubMenuX, var_5_0)
+@@ -262,7 +266,7 @@
+ 			JY.Person[JY.Base["佣兵" .. var_5_1]].修炼物品 = -1
+ 		end
+ 
+-		QZXS("将" .. JY.Person[JY.Base["佣兵" .. var_5_1]].姓名 .. "驱逐出队伍")
++		QZXS("已将" .. JY.Person[JY.Base["佣兵" .. var_5_1]].姓名 .. "解雇")  -- [port] was 放逐/驱逐出队伍; see docs/PATCHES.md
+ 
+ 		if JY.Base.佣兵出战 == JY.Base["佣兵" .. var_5_1] then
+ 			JY.Base.佣兵出战 = -1
+@@ -270,11 +274,23 @@
+ 			QZXS(JY.Person[JY.Base["佣兵" .. var_5_1]].姓名 .. "的自动出战已被取消")
+ 		end
+ 
+-		for iter_5_0 = 1, #PSX - 8 do
+-			JY.Person[JY.Base["佣兵" .. var_5_1]][PSX[iter_5_0]] = JY.Person[597][PSX[iter_5_0]]
++		-- [port] see docs/PATCHES.md. Blanking the record from template 597
++		-- is only safe for the three scratch slots sjyb generates into. A
++		-- 保镖 hired from an event is a named NPC, and overwriting one would
++		-- destroy that character in the save. Release those the way the
++		-- game's own dismissals do, by clearing the 佛学修为 "engaged" flag.
++		local var_5_2 = JY.Base["佣兵" .. var_5_1]
++
++		if var_5_2 >= 594 and var_5_2 <= 596 then
++			for iter_5_0 = 1, #PSX - 8 do
++				JY.Person[var_5_2][PSX[iter_5_0]] = JY.Person[597][PSX[iter_5_0]]
++			end
++
++			JY.Person[var_5_2].姓名 = JY.Person[597].姓名
++		else
++			JY.Person[var_5_2].佛学修为 = 0
+ 		end
+ 
+-		JY.Person[JY.Base["佣兵" .. var_5_1]].姓名 = JY.Person[597].姓名
+ 		JY.Base["佣兵" .. var_5_1] = -1
+ 
+ 		if var_5_1 == 1 then
+@@ -836,7 +852,7 @@
+ 		var_13_23("特殊兵器", C_WHITE, C_GOLD)
+ 		var_13_23("暗器技巧", C_WHITE, C_GOLD)
+ 		var_13_23("抗毒能力", C_WHITE, C_GOLD)
+-		var_13_23("资质", C_WHITE, C_GOLD)
++		-- [port] 资质 row removed; see docs/PATCHES.md.
+ 	elseif arg_13_1 == 2 then
+ 		var_13_22 = var_13_22 + 1
  

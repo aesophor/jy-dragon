@@ -7526,7 +7526,35 @@ function WarSelectTeam()
 		WAR.YbPerson[iter_39_9] = 0
 	end
 
-	if (JY.Base.佣兵1 > -1 or JY.Base.佣兵2 > -1 or JY.Base.佣兵3 > -1) and DrawStrBoxYesNo(-1, -1, "是否带佣兵出战？", C_WHITE, CC.DefaultFont) == true then
+	-- [port] 自动出战. Ybcz sets JY.Base.佣兵出战 to a mercenary who should
+	-- join every fight, but only the scripted auto-select path above honoured
+	-- it (7414). The manual path asked 是否带佣兵出战 and then made you pick
+	-- all over again. Take them without asking and skip both prompts.
+	--
+	-- Gated on 生命 > 0 the way Yb_SelectTeamMenu is: with no prompt there is
+	-- no way to decline, so a dead mercenary falls through and you choose.
+	local var_39_13 = -1
+
+	if JY.Base.佣兵出战 > -1 and JY.Person[JY.Base.佣兵出战].生命 > 0 then
+		for iter_39_12 = 1, CC.YbNum do
+			if JY.Base["佣兵" .. iter_39_12] == JY.Base.佣兵出战 then
+				var_39_13 = iter_39_12
+
+				break
+			end
+		end
+	end
+
+	if var_39_13 > 0 then
+		WAR.YbPerson[var_39_13] = 1
+		WAR.Person[WAR.PersonNum].人物编号 = JY.Base.佣兵出战
+		WAR.Person[WAR.PersonNum].我方 = true
+		WAR.Person[WAR.PersonNum].坐标X = WAR.Data["我方X" .. var_39_13] + 1
+		WAR.Person[WAR.PersonNum].坐标Y = WAR.Data["我方Y" .. var_39_13]
+		WAR.Person[WAR.PersonNum].死亡 = false
+		WAR.Person[WAR.PersonNum].人方向 = 2
+		WAR.PersonNum = WAR.PersonNum + 1
+	elseif (JY.Base.佣兵1 > -1 or JY.Base.佣兵2 > -1 or JY.Base.佣兵3 > -1) and DrawStrBoxYesNo(-1, -1, "是否带佣兵出战？", C_WHITE, CC.DefaultFont) == true then
 		local var_39_8 = {}
 
 		for iter_39_10 = 1, CC.YbNum do

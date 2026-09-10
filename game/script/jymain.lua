@@ -1358,6 +1358,12 @@ function MMenu()
 			1
 		},
 		{
+			-- [port] Yb was never called; see docs/PATCHES.md.
+			"佣兵",
+			Yb,
+			1
+		},
+		{
 			"系统",
 			Menu_System,
 			1
