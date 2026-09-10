@@ -274,19 +274,19 @@ widths. It is mismatched independently of this and is left alone.
 
 ## Battle background music
 
-`jyconst.lua:206` -- `CC.BattleMusicFile`, `CC.BattleMusicBase`, `CC.BattleMusicNum`
-`jymain.lua:4870` -- `PlayMIDI` addresses the battle range
-`jywar.lua:17192` -- pick one on entering a battle
+`jyconst.lua:208` -- `CC.BattleMusicFile`, `CC.BattleMusicBase`, `CC.BattleMusicNum`
+`jymain.lua:4876` -- `PlayMIDI` addresses the battle range
+`jywar.lua:17214` -- pick one on entering a battle
 
 The mod has no battle music. `WarMain` -- the single entry point every battle
 in the game routes through -- never touches the music, so combat inherits
 whatever the scene or world map was playing. The schema has a per-battle
-`CC.WarData_S.音乐` field (`jyconst.lua:2679`) that no script ever reads, and
+`CC.WarData_S.音乐` field (`jyconst.lua:2681`) that no script ever reads, and
 the only battle-specific track is the victory fanfare `PlayMIDI(100)`
-(`jywar.lua:18830`, `18841`), whose `game100.mp3` does not ship.
+(`jywar.lua:18869`, `18880`), whose `game100.mp3` does not ship.
 
 New tracks go in `sound/battle<N>.mp3`, and the count is probed at startup
-rather than hardcoded, so adding `battle4.mp3` needs no code change:
+rather than hardcoded, so adding a track needs no code change:
 
     while existFile(string.format(CC.BattleMusicFile, CC.BattleMusicNum + 1)) do
         CC.BattleMusicNum = CC.BattleMusicNum + 1
@@ -300,7 +300,7 @@ shipped track is 2002) are mapped to the battle pattern inside `PlayMIDI`
 itself. That keeps `JY.CurrentMIDI` accurate, which is what two other things
 depend on:
 
-- `Menu_SetMusic` (`1715`) replays `JY.CurrentMIDI` when you toggle music
+- `Menu_SetMusic` (`1717`) replays `JY.CurrentMIDI` when you toggle music
   back on, so it resumes the battle track rather than the scene's;
 - `WarMain`'s tail already restores `JY.Scene[JY.SubScene].进门音乐`, or
   `PlayMIDI(0)`, on every exit (`18895`), so nothing is needed to end it.
@@ -319,8 +319,24 @@ behaves exactly as the mod always did.
 Verified by probing `PlayMIDI` at startup: id 9002 resolved to
 `./sound/battle2.mp3` (83.0s, looping) and 9003 to `battle3.mp3`, with
 `JY.CurrentMIDI` following, while plain id 11 still resolved to
-`game11.mp3`. The count probed as 3. The `WarMain` hook itself is not covered
--- there is no harness that enters a battle, so it needs a real fight.
+`game11.mp3`. The `WarMain` hook itself is not covered -- there is no harness
+that enters a battle, so it needs a real fight.
+
+`battle4.mp3` and `battle5.mp3` were later dropped into `sound/` with no code
+change, which is the claim above put to the test. Running `SetGlobalConst()`
+from `game/`, so the count loop probes the same relative paths the engine
+does, gives `CC.BattleMusicNum = 5`; `battle6.mp3` is what stops it. Each of
+the five ids 9001-9005 maps back to a file that exists, and 5000 draws of
+`math.random(CC.BattleMusicNum)` reach all five.
+
+Whether the engine can decode them is a separate question, and the answer is
+not in the script. `JY_TEST_MUSIC` plays a fixed `./sound/game11.mp3`, so each
+track was fed to it through a directory of symlinks to `game/` with
+`game11.mp3` pointed at one battle track at a time. All five load and loop,
+at durations matching `afinfo` to the tenth of a second:
+
+    battle1  38.9s    battle2  83.0s    battle3  46.9s
+    battle4  86.3s    battle5  36.1s
 
 ## The 佣兵 management menu was unreachable
 
