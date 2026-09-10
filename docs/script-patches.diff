@@ -1,7 +1,183 @@
 diff -ru --label pristine --label ported ../_re/script_source_utf8/MyOEvent.lua game/script/MyOEvent.lua
 --- pristine
 +++ ported
-@@ -9046,7 +9046,7 @@
+@@ -353,7 +353,130 @@
+ 	return var_3_30
+ end
+ 
+-function My_ChuangSong_List()
++-- [port] Whether the player can stand on a cell of a given scene. Mirrors
++-- SceneCanPass, which cannot be reused because it reads JY.SubScene rather
++-- than taking a scene, and the caller below has to ask before entering.
++function Scene_Passable(arg_100_0, arg_100_1, arg_100_2)
++	if arg_100_1 < 1 or arg_100_2 < 1 or arg_100_1 > CC.SWidth - 2 or arg_100_2 > CC.SHeight - 2 then
++		return false
++	end
++
++	if GetS(arg_100_0, arg_100_1, arg_100_2, 1) > 0 then
++		return false
++	end
++
++	local var_100_0 = GetS(arg_100_0, arg_100_1, arg_100_2, 3)
++
++	if var_100_0 >= 0 and GetD(arg_100_0, var_100_0, 0) ~= 0 then
++		return false
++	end
++
++	if CC.SceneWater[GetS(arg_100_0, arg_100_1, arg_100_2, 0)] ~= nil then
++		return false
++	end
++
++	return true
++end
++
++-- [port] A scene that only scripts enter usually has no usable 入口: 11 of
++-- the 137 name a cell that is blocked or out of bounds. Scene 65 无名古墓 is
++-- one, at (48,30), where layer 1 holds sprite 4230 -- teleporting there drops
++-- the player inside a wall.
++--
++-- The nearest passable cell is not good enough either. Scene 65's is a
++-- 33-cell pocket 12 cells away, sealed off from the tomb proper, which is a
++-- 178-cell region in the other direction; landing there is no more use than
++-- landing in the wall. So flood the passable cells into regions, keep the
++-- largest, and return its cell closest to the 入口 the scene names.
++function Scene_PassableRegions(arg_101_0)
++	local var_101_0 = {}
++	local var_101_1 = 0
++	local var_101_2 = 0
++	local var_101_3 = 0
++
++	for iter_101_0 = 1, CC.SHeight - 2 do
++		for iter_101_1 = 1, CC.SWidth - 2 do
++			local var_101_4 = iter_101_1 + iter_101_0 * CC.SWidth
++
++			if var_101_0[var_101_4] == nil and Scene_Passable(arg_101_0, iter_101_1, iter_101_0) then
++				var_101_1 = var_101_1 + 1
++
++				local var_101_5 = {
++					{
++						iter_101_1,
++						iter_101_0
++					}
++				}
++				local var_101_6 = 0
++
++				var_101_0[var_101_4] = var_101_1
++
++				while #var_101_5 > 0 do
++					local var_101_7 = table.remove(var_101_5)
++
++					var_101_6 = var_101_6 + 1
++
++					for iter_101_2 = 1, 4 do
++						local var_101_8 = var_101_7[1] + CC.DirectX[iter_101_2]
++						local var_101_9 = var_101_7[2] + CC.DirectY[iter_101_2]
++						local var_101_10 = var_101_8 + var_101_9 * CC.SWidth
++
++						if var_101_0[var_101_10] == nil and Scene_Passable(arg_101_0, var_101_8, var_101_9) then
++							var_101_0[var_101_10] = var_101_1
++							var_101_5[#var_101_5 + 1] = {
++								var_101_8,
++								var_101_9
++							}
++						end
++					end
++				end
++
++				if var_101_6 > var_101_3 then
++					var_101_3 = var_101_6
++					var_101_2 = var_101_1
++				end
++			end
++		end
++	end
++
++	return var_101_0, var_101_2, var_101_3
++end
++
++function Scene_EntryXY(arg_102_0)
++	local var_102_0 = JY.Scene[arg_102_0].入口X
++	local var_102_1 = JY.Scene[arg_102_0].入口Y
++
++	if Scene_Passable(arg_102_0, var_102_0, var_102_1) then
++		return var_102_0, var_102_1
++	end
++
++	local var_102_2, var_102_3 = Scene_PassableRegions(arg_102_0)
++	local var_102_4 = -1
++	local var_102_5 = -1
++	local var_102_6 = CC.SWidth + CC.SHeight
++
++	for iter_102_0 = 1, CC.SHeight - 2 do
++		for iter_102_1 = 1, CC.SWidth - 2 do
++			if var_102_2[iter_102_1 + iter_102_0 * CC.SWidth] == var_102_3 then
++				local var_102_7 = math.max(math.abs(iter_102_1 - var_102_0), math.abs(iter_102_0 - var_102_1))
++
++				if var_102_7 < var_102_6 then
++					var_102_6 = var_102_7
++					var_102_4 = iter_102_1
++					var_102_5 = iter_102_0
++				end
++			end
++		end
++	end
++
++	if var_102_4 > 0 then
++		return var_102_4, var_102_5
++	end
++
++	return math.modf(CC.SWidth / 2), math.modf(CC.SHeight / 2)
++end
++
++function Teleport_List()
+ 	local var_4_0 = {}
+ 
+ 	for iter_4_0 = 0, JY.SceneNum - 1 do
+@@ -378,7 +501,11 @@
+ 		local var_4_2 = var_4_1 - 1
+ 
+ 		if JY.Scene[var_4_2].进入条件 == 0 and var_4_2 ~= 84 and var_4_2 ~= 83 and var_4_2 ~= 82 and var_4_2 ~= 13 then
+-			My_Enter_SubScene(var_4_2, -1, -1, -1)
++			-- [port] not (-1,-1): that leaves My_Enter_SubScene on the scene's
++			-- own 入口, which 11 of the 137 scenes leave inside a wall.
++			local var_4_3, var_4_4 = Scene_EntryXY(var_4_2)
++
++			My_Enter_SubScene(var_4_2, var_4_3, var_4_4, -1)
+ 		else
+ 			say("您目前现在不能进入此场景", 232, 1, "百事通")
+ 
+@@ -389,7 +516,7 @@
+ 	return 1
+ end
+ 
+-function My_ChuangSong_Ex()
++function Teleport()
+ 	local var_5_0 = "百事通传送功能"
+ 	local var_5_1 = "这是一个很方便的马车传送系统"
+ 	local var_5_2 = {
+@@ -401,7 +528,7 @@
+ 	local var_5_4 = JYMsgBox(var_5_0, var_5_1, var_5_2, var_5_3, 232, 1)
+ 
+ 	if var_5_4 == 1 then
+-		return My_ChuangSong_List()
++		return Teleport_List()
+ 	elseif var_5_4 == 2 then
+ 		Cls()
+ 
+@@ -409,7 +536,11 @@
+ 
+ 		if var_5_5 ~= nil then
+ 			if JY.Scene[var_5_5].进入条件 == 0 and var_5_5 ~= 84 and var_5_5 ~= 83 and var_5_5 ~= 82 and var_5_5 ~= 13 then
+-				My_Enter_SubScene(var_5_5, -1, -1, -1)
++				-- [port] the same wall problem as the list path above; see
++				-- docs/PATCHES.md.
++				local var_5_6, var_5_7 = Scene_EntryXY(var_5_5)
++
++				My_Enter_SubScene(var_5_5, var_5_6, var_5_7, -1)
+ 			else
+ 				say("您目前现在不能进入此场景", 232, 1, "百事通")
+ 
+@@ -9046,7 +9177,7 @@
  	local var_16_6 = "队伍"
  
  	if var_16_4 == 2 then
@@ -22,6 +198,34 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/OEvent1901.lu
  	say("每天晚上？你真有毅力。", 79, 0)
  	say("为报大仇，不得不然。有一*天晚上，你妈妈问你爹爹你*为何要冤枉冲儿偷了我的辟*邪剑谱？说那日令狐冲受伤*昏迷，你妈妈替他止血治伤*时，曾经看到过剑谱，第二*次替他换药，那剑谱就不见*了，其时令狐冲仍然昏迷未*醒。那段时候除了你父母二*人，并无别人进房。还说你*爹爹苦心焦虑，为了保全本*派。只是那辟邪剑法练之有*损无益，劝你爹爹万万不要*修炼。你爹爹说要听你娘的*劝，找时间就设法把剑谱交*给我，再慢慢想法替令狐冲*洗刷清白。你娘说这剑谱于*人有损，不可让我见到，让*你爹爹毁去为是。你爹爹同*意把剑谱毁去，然后立刻开*窗把剑谱扔下天生崖，老天*有眼，剑谱挂在树丫上，我*捡了回来。正是我家祖传的*辟邪剑谱。", 36, 1)
  	say("妈妈只道爹爹将剑谱掷入了*天声峡中，其实爹爹早将剑*法记熟，剑谱于他已然无用*，却让你因此而学得了剑法*，是不是？嗯，天意如此。*冥冥之中，老天爷一切早有*安排，要你由此而报你父母*的仇了。那……那……那也*很好，也好。", 79, 0)
+diff -ru --label pristine --label ported ../_re/script_source_utf8/OEvent6001.lua game/script/OEvent6001.lua
+--- pristine
++++ ported
+@@ -10893,6 +10893,12 @@
+ 	end
+ 
+ 	local var_134_5 = Rnd(6)
++
++	-- [port] JY_DEBUG_TOMB=<1..6> picks the 无名古墓 variant instead of
++	-- rolling for it; see docs/PATCHES.md.
++	if CC.DebugTomb then
++		var_134_5 = CC.DebugTomb
++	end
+ 	local var_134_6 = Rnd(10)
+ 	local var_134_7 = JY.Base.人X
+ 	local var_134_8 = JY.Base.人Y
+@@ -11240,7 +11246,10 @@
+ 			say("好，雨已经停了，你可以上路了。不要跟人说你见过我。", var_134_13, 0, "？？？")
+ 			Cls()
+ 			say("是！前辈保重！", 0, 1)
+-		elseif JY.TIMECOUNT == Rnd(1900) * var_134_1 - 10 * var_134_3 + var_134_2 then
++		-- [port] CC.DebugTomb forces this branch; the nine tested before it
++		-- still get their roll, so a step is occasionally spent on one of
++		-- them instead. See docs/PATCHES.md.
++		elseif CC.DebugTomb or JY.TIMECOUNT == Rnd(1900) * var_134_1 - 10 * var_134_3 + var_134_2 then
+ 			dark()
+ 			light()
+ 			say("哎呀，不好，这儿怎么有个大洞。", 0, 1)
 diff -ru --label pristine --label ported ../_re/script_source_utf8/jyconst.lua game/script/jyconst.lua
 --- pristine
 +++ ported
@@ -59,16 +263,23 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jyconst.lua g
  		CC.Base_S["佣兵" .. iter_1_1] = {
  			72 + 2 * (iter_1_1 - 1),
  			0,
-@@ -1779,6 +1788,8 @@
+@@ -1779,6 +1788,15 @@
  	CC.PersonMoveFrame = CC.Frame * 2
  	CC.AnimationFrame = CC.Frame * 3
  	CC.WarAutoDelay = 300
 +	-- [port] ms to hold each battle effect-text frame; see jywar.lua.
 +	CC.EffectTextMS = tonumber(os.getenv('JY_EFFECT_TEXT_MS')) or 40
++
++	-- [port] debug aids for editing scenes and events, both off unless
++	-- asked for; see docs/PATCHES.md.
++	--   JY_DEBUG        adds 传送 to the 系统 menu
++	--   JY_DEBUG_TOMB=n forces the 无名古墓 event, variant n of 6
++	CC.DebugMenu = os.getenv('JY_DEBUG') ~= nil
++	CC.DebugTomb = tonumber(os.getenv('JY_DEBUG_TOMB'))
  	CC.DirectX = {
  		0,
  		1,
-@@ -2758,7 +2769,7 @@
+@@ -2758,7 +2776,7 @@
  
  	CC.ThingGapOut = 10
  	CC.ThingGapIn = 10
@@ -140,7 +351,35 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jymain.lua ga
  		},
  		{
  			"游戏调速",
-@@ -1953,7 +1963,7 @@
+@@ -1392,6 +1402,18 @@
+ 		}
+ 	}
+ 
++	-- [port] JY_DEBUG surfaces the mod's own scene teleporter, which the
++	-- `var_22_1 == 8` test below could never reach: this menu has five
++	-- entries, so ShowMenu never returns 8. Appended rather than slotted
++	-- into the gap, so 1..5 keep their indices.
++	if CC.DebugMenu then
++		var_22_0[#var_22_0 + 1] = {
++			"传送",
++			Teleport,
++			1
++		}
++	end
++
+ 	if JY.EnableMusic == 0 then
+ 		var_22_0[3][1] = "打开音乐"
+ 	end
+@@ -1419,7 +1441,7 @@
+ 	end
+ 
+ 	if var_22_1 == 8 then
+-		My_ChuangSong_Ex()
++		Teleport()
+ 
+ 		return 1
+ 	end
+@@ -1953,7 +1975,7 @@
  	local var_38_0 = (CC.ScreenW - 38.5 * CC.FontSmall3 - 2 * CC.MenuBorderPixel) / 3
  	local var_38_1 = (CC.ScreenH - 1 * (CC.FontSmall3 + CC.RowPixel)) / 3
  
@@ -149,7 +388,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jymain.lua ga
  
  	local var_38_2 = SaveList()
  
-@@ -1971,7 +1981,7 @@
+@@ -1971,7 +1993,7 @@
  	local var_39_0 = (CC.ScreenW - 38.5 * CC.FontSmall3 - 2 * CC.MenuBorderPixel) / 3
  	local var_39_1 = (CC.ScreenH - 1 * (CC.FontSmall3 + CC.RowPixel)) / 3
  
@@ -158,7 +397,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jymain.lua ga
  
  	local var_39_2 = SaveList()
  
-@@ -4863,7 +4873,14 @@
+@@ -4863,7 +4885,14 @@
  		return
  	end
  
@@ -174,7 +413,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jymain.lua ga
  		lib.PlayMIDI(string.format(CC.MIDIFile, arg_108_0))
  	end
  end
-@@ -9299,26 +9316,8 @@
+@@ -9299,26 +9328,8 @@
  
  	DrawString(15, 15 + var_259_20 * (CC.FontSmall2 + CC.RowPixel), "年龄:" .. 15 + JY.YEAR .. " 声望 " .. JY.Person[0].声望, M_SandyBrown, CC.FontSmall2)
  
@@ -203,7 +442,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jymain.lua ga
  	local var_259_24 = var_259_20 + 1
  
  	DrawString(15, 15 + var_259_24 * (CC.FontSmall2 + CC.RowPixel), "时间:天启" .. JY.YEAR .. "年" .. JY.MONTH .. "月" .. JY.DAY .. "日", Violet, CC.FontSmall2)
-@@ -9335,39 +9334,8 @@
+@@ -9335,39 +9346,8 @@
  	DrawString(CC.FontSmall2 * 3, 15 + var_259_26 * (CC.FontSmall2 + CC.RowPixel), var_259_2, Dark_Gold, CC.FontSmall2)
  	DrawString(50 + CC.FontSmall2 * 4 + 8, 15 + var_259_26 * (CC.FontSmall2 + CC.RowPixel), var_259_4, Dark_Gold, CC.FontSmall2)
  
@@ -245,7 +484,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jymain.lua ga
  end
  
  function night()
-@@ -9891,18 +9859,18 @@
+@@ -9891,18 +9871,18 @@
  		local var_275_18 = read_files(string.format(CC.CircleFile, iter_275_1), 2000 + 20 * iter_275_1, 20)
  
  		if var_275_18 ~= nil then

@@ -8,7 +8,7 @@
  *   jywar.lua:22000  string.sub(s, n*2 - 1, n*2) slices out the n-th character
  *   jymain.lua:3624  string.len(s) / 2 * font is how pixel widths are computed
  *                    -- some thirty sites do this, with /2 and /4 variants
- *   MyOEvent.lua:9360  string.byte(s, -1) > 127 tests for a trailing wide char
+ *   MyOEvent.lua:9491  string.byte(s, -1) > 127 tests for a trailing wide char
  *
  * A CJK character is 3 bytes in UTF-8, so none of that survives a naive
  * conversion: wrapping would slice characters in half and every centred label

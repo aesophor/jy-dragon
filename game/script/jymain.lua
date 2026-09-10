@@ -1402,6 +1402,18 @@ function Menu_System()
 		}
 	}
 
+	-- [port] JY_DEBUG surfaces the mod's own scene teleporter, which the
+	-- `var_22_1 == 8` test below could never reach: this menu has five
+	-- entries, so ShowMenu never returns 8. Appended rather than slotted
+	-- into the gap, so 1..5 keep their indices.
+	if CC.DebugMenu then
+		var_22_0[#var_22_0 + 1] = {
+			"传送",
+			Teleport,
+			1
+		}
+	end
+
 	if JY.EnableMusic == 0 then
 		var_22_0[3][1] = "打开音乐"
 	end
@@ -1429,7 +1441,7 @@ function Menu_System()
 	end
 
 	if var_22_1 == 8 then
-		My_ChuangSong_Ex()
+		Teleport()
 
 		return 1
 	end

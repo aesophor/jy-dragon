@@ -353,7 +353,130 @@ function TeleportMenu(arg_3_0, arg_3_1, arg_3_2)
 	return var_3_30
 end
 
-function My_ChuangSong_List()
+-- [port] Whether the player can stand on a cell of a given scene. Mirrors
+-- SceneCanPass, which cannot be reused because it reads JY.SubScene rather
+-- than taking a scene, and the caller below has to ask before entering.
+function Scene_Passable(arg_100_0, arg_100_1, arg_100_2)
+	if arg_100_1 < 1 or arg_100_2 < 1 or arg_100_1 > CC.SWidth - 2 or arg_100_2 > CC.SHeight - 2 then
+		return false
+	end
+
+	if GetS(arg_100_0, arg_100_1, arg_100_2, 1) > 0 then
+		return false
+	end
+
+	local var_100_0 = GetS(arg_100_0, arg_100_1, arg_100_2, 3)
+
+	if var_100_0 >= 0 and GetD(arg_100_0, var_100_0, 0) ~= 0 then
+		return false
+	end
+
+	if CC.SceneWater[GetS(arg_100_0, arg_100_1, arg_100_2, 0)] ~= nil then
+		return false
+	end
+
+	return true
+end
+
+-- [port] A scene that only scripts enter usually has no usable 入口: 11 of
+-- the 137 name a cell that is blocked or out of bounds. Scene 65 无名古墓 is
+-- one, at (48,30), where layer 1 holds sprite 4230 -- teleporting there drops
+-- the player inside a wall.
+--
+-- The nearest passable cell is not good enough either. Scene 65's is a
+-- 33-cell pocket 12 cells away, sealed off from the tomb proper, which is a
+-- 178-cell region in the other direction; landing there is no more use than
+-- landing in the wall. So flood the passable cells into regions, keep the
+-- largest, and return its cell closest to the 入口 the scene names.
+function Scene_PassableRegions(arg_101_0)
+	local var_101_0 = {}
+	local var_101_1 = 0
+	local var_101_2 = 0
+	local var_101_3 = 0
+
+	for iter_101_0 = 1, CC.SHeight - 2 do
+		for iter_101_1 = 1, CC.SWidth - 2 do
+			local var_101_4 = iter_101_1 + iter_101_0 * CC.SWidth
+
+			if var_101_0[var_101_4] == nil and Scene_Passable(arg_101_0, iter_101_1, iter_101_0) then
+				var_101_1 = var_101_1 + 1
+
+				local var_101_5 = {
+					{
+						iter_101_1,
+						iter_101_0
+					}
+				}
+				local var_101_6 = 0
+
+				var_101_0[var_101_4] = var_101_1
+
+				while #var_101_5 > 0 do
+					local var_101_7 = table.remove(var_101_5)
+
+					var_101_6 = var_101_6 + 1
+
+					for iter_101_2 = 1, 4 do
+						local var_101_8 = var_101_7[1] + CC.DirectX[iter_101_2]
+						local var_101_9 = var_101_7[2] + CC.DirectY[iter_101_2]
+						local var_101_10 = var_101_8 + var_101_9 * CC.SWidth
+
+						if var_101_0[var_101_10] == nil and Scene_Passable(arg_101_0, var_101_8, var_101_9) then
+							var_101_0[var_101_10] = var_101_1
+							var_101_5[#var_101_5 + 1] = {
+								var_101_8,
+								var_101_9
+							}
+						end
+					end
+				end
+
+				if var_101_6 > var_101_3 then
+					var_101_3 = var_101_6
+					var_101_2 = var_101_1
+				end
+			end
+		end
+	end
+
+	return var_101_0, var_101_2, var_101_3
+end
+
+function Scene_EntryXY(arg_102_0)
+	local var_102_0 = JY.Scene[arg_102_0].入口X
+	local var_102_1 = JY.Scene[arg_102_0].入口Y
+
+	if Scene_Passable(arg_102_0, var_102_0, var_102_1) then
+		return var_102_0, var_102_1
+	end
+
+	local var_102_2, var_102_3 = Scene_PassableRegions(arg_102_0)
+	local var_102_4 = -1
+	local var_102_5 = -1
+	local var_102_6 = CC.SWidth + CC.SHeight
+
+	for iter_102_0 = 1, CC.SHeight - 2 do
+		for iter_102_1 = 1, CC.SWidth - 2 do
+			if var_102_2[iter_102_1 + iter_102_0 * CC.SWidth] == var_102_3 then
+				local var_102_7 = math.max(math.abs(iter_102_1 - var_102_0), math.abs(iter_102_0 - var_102_1))
+
+				if var_102_7 < var_102_6 then
+					var_102_6 = var_102_7
+					var_102_4 = iter_102_1
+					var_102_5 = iter_102_0
+				end
+			end
+		end
+	end
+
+	if var_102_4 > 0 then
+		return var_102_4, var_102_5
+	end
+
+	return math.modf(CC.SWidth / 2), math.modf(CC.SHeight / 2)
+end
+
+function Teleport_List()
 	local var_4_0 = {}
 
 	for iter_4_0 = 0, JY.SceneNum - 1 do
@@ -378,7 +501,11 @@ function My_ChuangSong_List()
 		local var_4_2 = var_4_1 - 1
 
 		if JY.Scene[var_4_2].进入条件 == 0 and var_4_2 ~= 84 and var_4_2 ~= 83 and var_4_2 ~= 82 and var_4_2 ~= 13 then
-			My_Enter_SubScene(var_4_2, -1, -1, -1)
+			-- [port] not (-1,-1): that leaves My_Enter_SubScene on the scene's
+			-- own 入口, which 11 of the 137 scenes leave inside a wall.
+			local var_4_3, var_4_4 = Scene_EntryXY(var_4_2)
+
+			My_Enter_SubScene(var_4_2, var_4_3, var_4_4, -1)
 		else
 			say("您目前现在不能进入此场景", 232, 1, "百事通")
 
@@ -389,7 +516,7 @@ function My_ChuangSong_List()
 	return 1
 end
 
-function My_ChuangSong_Ex()
+function Teleport()
 	local var_5_0 = "百事通传送功能"
 	local var_5_1 = "这是一个很方便的马车传送系统"
 	local var_5_2 = {
@@ -401,7 +528,7 @@ function My_ChuangSong_Ex()
 	local var_5_4 = JYMsgBox(var_5_0, var_5_1, var_5_2, var_5_3, 232, 1)
 
 	if var_5_4 == 1 then
-		return My_ChuangSong_List()
+		return Teleport_List()
 	elseif var_5_4 == 2 then
 		Cls()
 
@@ -409,7 +536,11 @@ function My_ChuangSong_Ex()
 
 		if var_5_5 ~= nil then
 			if JY.Scene[var_5_5].进入条件 == 0 and var_5_5 ~= 84 and var_5_5 ~= 83 and var_5_5 ~= 82 and var_5_5 ~= 13 then
-				My_Enter_SubScene(var_5_5, -1, -1, -1)
+				-- [port] the same wall problem as the list path above; see
+				-- docs/PATCHES.md.
+				local var_5_6, var_5_7 = Scene_EntryXY(var_5_5)
+
+				My_Enter_SubScene(var_5_5, var_5_6, var_5_7, -1)
 			else
 				say("您目前现在不能进入此场景", 232, 1, "百事通")
 

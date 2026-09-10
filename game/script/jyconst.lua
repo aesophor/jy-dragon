@@ -1790,6 +1790,13 @@ function SetGlobalConst()
 	CC.WarAutoDelay = 300
 	-- [port] ms to hold each battle effect-text frame; see jywar.lua.
 	CC.EffectTextMS = tonumber(os.getenv('JY_EFFECT_TEXT_MS')) or 40
+
+	-- [port] debug aids for editing scenes and events, both off unless
+	-- asked for; see docs/PATCHES.md.
+	--   JY_DEBUG        adds 传送 to the 系统 menu
+	--   JY_DEBUG_TOMB=n forces the 无名古墓 event, variant n of 6
+	CC.DebugMenu = os.getenv('JY_DEBUG') ~= nil
+	CC.DebugTomb = tonumber(os.getenv('JY_DEBUG_TOMB'))
 	CC.DirectX = {
 		0,
 		1,

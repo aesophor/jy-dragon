@@ -10893,6 +10893,12 @@ OEVENTLUA[7001] = function ()
 	end
 
 	local var_134_5 = Rnd(6)
+
+	-- [port] JY_DEBUG_TOMB=<1..6> picks the 无名古墓 variant instead of
+	-- rolling for it; see docs/PATCHES.md.
+	if CC.DebugTomb then
+		var_134_5 = CC.DebugTomb
+	end
 	local var_134_6 = Rnd(10)
 	local var_134_7 = JY.Base.人X
 	local var_134_8 = JY.Base.人Y
@@ -11240,7 +11246,10 @@ OEVENTLUA[7001] = function ()
 			say("好，雨已经停了，你可以上路了。不要跟人说你见过我。", var_134_13, 0, "？？？")
 			Cls()
 			say("是！前辈保重！", 0, 1)
-		elseif JY.TIMECOUNT == Rnd(1900) * var_134_1 - 10 * var_134_3 + var_134_2 then
+		-- [port] CC.DebugTomb forces this branch; the nine tested before it
+		-- still get their roll, so a step is occasionally spent on one of
+		-- them instead. See docs/PATCHES.md.
+		elseif CC.DebugTomb or JY.TIMECOUNT == Rnd(1900) * var_134_1 - 10 * var_134_3 + var_134_2 then
 			dark()
 			light()
 			say("哎呀，不好，这儿怎么有个大洞。", 0, 1)

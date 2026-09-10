@@ -50,7 +50,7 @@ them: `CC.YbNum` (the three mercenary slots) is now `CC.MercenaryNum`, and
 Chinese `JY.Base.佣兵N` keys, which keep their names.
 
 The rename itself is not marked `-- [port]` at each of its ~90 sites; the
-table above is the record. The one exception is `MyOEvent.lua:9049`, whose
+table above is the record. The one exception is `MyOEvent.lua:9180`, whose
 only difference from the pristine tree is a renamed constant -- it carries a
 marker so that a script with no `[port]` marker still means a pristine script.
 
@@ -513,7 +513,7 @@ pets and 随从 -- and nothing outside the blocks reads any of them.
 `var_259_20` and `var_259_26` stay, because the rows above each cut derive
 from them.
 
-The 随从 row was display only. `MyOEvent.lua:465` is what actually takes two
+The 随从 row was display only. `MyOEvent.lua:596` is what actually takes two
 days off a 马车 trip when `随从1` is 625, and that is untouched, as are the
 five other sites that read or set the field.
 
@@ -571,7 +571,7 @@ from does not move.
 Counted across every occurrence in `game/script/`, simulating table + rule:
 **65 become 沖 and 81 stay 衝**, with no false positive in either direction.
 Every 沖 is 令狐沖, 沖兒 or 沖哥; the 衝 side is all verbs and 中衝劍 /
-關衝劍 / 少衝劍. A bare `"冲"` in `MyOEvent.lua:2920` is an entry in a pinyin
+關衝劍 / 少衝劍. A bare `"冲"` in `MyOEvent.lua:2924` is an entry in a pinyin
 table, where either form is fine.
 
 The one script edit is the exception the render layer cannot reach.
@@ -580,6 +580,103 @@ line separator (`Split(text, "*")`), so 狐 and 冲 arrive in different draw
 calls with no neighbour to match on. That literal spells 沖 directly; it is
 unmapped by the table, so it passes through untouched. (The other wrapped
 occurrence, 令*狐冲, leaves 狐冲 contiguous and the rule catches it.)
+
+## Debug aids for editing scenes and events
+
+`jyconst.lua:1798` -- `CC.DebugMenu`, `CC.DebugTomb`
+`jymain.lua:1405` -- 传送 in the 系统 menu when `JY_DEBUG` is set
+`OEvent6001.lua:10897`, `11249` -- force the 无名古墓 event and its variant
+`MyOEvent.lua:359`, `391`, `445` -- a landing spot the scene can hold
+
+Two environment switches, both absent by default, so an ordinary launch is
+byte-for-byte the game it was:
+
+| variable | effect |
+|---|---|
+| `JY_DEBUG` | adds a 传送 row to the 系统 menu |
+| `JY_DEBUG_TOMB=<1..6>` | the 无名古墓 event fires on the next overworld step, running variant *n* of its six |
+
+**`JY_DEBUG` surfaces something the mod already had.** `Menu_System` ends with
+
+    if var_22_1 == 7 then Menu_HYZB() ... end
+    if var_22_1 == 8 then Teleport() ... end
+
+and its menu table holds five entries. `ShowMenu` is called with `#var_22_0`,
+so it can never return 7 or 8: `Teleport`, the mod's own teleporter, is
+orphaned the same way `Mercenary_Menu` was. `ljd2` names it and its list
+`My_ChuangSong_Ex` and `My_ChuangSong_List`, from 传送; both trees now call
+them `Teleport` and `Teleport_List`. Its list
+(`MyOEvent.lua:479`) enumerates all 137 scenes and enables every one whose
+进入条件 is 0, which includes scene 65 无名古墓 -- reachable no other way,
+since its 外景入口 is (-1,-1) and no world-map tile leads there. The entry is
+appended rather than slotted into the gap at 6 and 7, so indices 1..5 keep
+their meaning and the two dead tests stay dead.
+
+**Where teleporting drops you.** `Teleport_List` passed `(-1, -1)`, which
+leaves `My_Enter_SubScene` on the scene's own 入口. That is fine for the 126
+scenes you can walk into, and useless for the rest: 11 of the 137 name a cell
+that is blocked or out of bounds, scene 65 among them at (48,30), where layer
+1 holds sprite 4230. Teleporting there put the player inside a wall.
+
+`Scene_EntryXY` (`MyOEvent.lua:445`) returns the 入口 when it is passable
+and otherwise the nearest cell that is -- but nearest alone is not enough.
+Scene 65's nearest passable cell is (60,18), in a 33-cell pocket sealed off
+from everything; standing there is no more use than standing in the wall. So
+`Scene_PassableRegions` floods the passable cells into connected regions,
+keeps the largest, and the entry point becomes that region's cell closest to
+the named 入口. `Scene_Passable` mirrors `SceneCanPass`, which could not be
+reused because it reads `JY.SubScene` while the caller has to ask before
+entering. It is not called `Scene_CanPass`: a name differing from the
+original by one underscore is a trap in review.
+
+`Teleport` offers two ways in and both needed it: 列表选择 goes through
+`Teleport_List`, and 输入代码 takes a scene number straight from
+`InputNum` (`MyOEvent.lua:539`). The first pass fixed only the list and left
+typing `65` still landing in the wall.
+
+Across all 137 scenes: 126 keep their 入口 untouched, 11 are relocated, and
+every one of the 137 now lands on a passable cell. Scene 65 goes to (32,27),
+in its 178-cell chamber, 16 cells from the entry it names.
+
+That chamber is not the one 梅超风 is in. The tomb is two sealed regions --
+178 cells holding the variant 2, 3 and 5/6 spawns at (25,31), (23,30) and
+(16,33), and 165 cells holding variants 1 and 4 at (25,17) and (28,15) -- with
+no path between them. Teleporting is for looking at the map; the variable
+below is what puts you in front of her.
+
+**`JY_DEBUG_TOMB` covers what teleporting cannot.** The tomb's story is not
+in the scene; it is inline in the `OEVENTLUA[7001]` branch, 350 lines of
+`say`, `WarMain` and loot. Walking into scene 65 gets the map and an empty
+room. So the branch condition gains `CC.DebugTomb or` in front of it, and
+`var_134_5` -- the `Rnd(6)` that picks which of the six variants runs -- is
+overridden when the variable is set.
+
+The nine branches tested before it still get their roll, so a step is
+occasionally spent on 山贼 or 狼群 instead. At 声望 114 / 气运 10 a step
+reaches the tomb 99.465% of the time, 1.005 steps on average; the effect is
+not worth nine more edits to suppress.
+
+Verified by loading slot 2 on the world map and walking, once per setting:
+
+| setting | battle loaded |
+|---|---|
+| unset | none -- the event did not fire |
+| `JY_DEBUG_TOMB=1` | `LoadWarMap: map 65` |
+| `JY_DEBUG_TOMB=2` | none |
+| `JY_DEBUG_TOMB=3` | none |
+
+`war.sta` record 441 is 名称 梅超風, 地图 65, so map 65 is the right
+signature for variant 1's fight, and 442 is 古墓盜賊 on the same map. Variant
+2 only fights if you agree to open the coffin and the scripted keys declined;
+variant 3 has no battle at all. Unset firing nothing is the control.
+
+`Menu_System` was checked with a stub `ShowMenu` that records what it is
+handed, rather than by driving the menu: `Game_MMap` polls `GetKey` once per
+frame, so `JY_KEYS` entries are eaten by frame polling before they reach a
+submenu, and a first attempt to photograph the menu two ways produced
+identical frames because neither run had opened it. The stub gives `n=5` with
+the variable unset and `n=6` with 传送 -> `Teleport` appended when it
+is set.
 
 ## What stays in src/compat.lua.h
 

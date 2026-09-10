@@ -340,7 +340,7 @@ CJK text, and every bit of it assumes two bytes per wide character:
 | `jymain.lua:6404` | `GenTalkString` steps 2 bytes per wide char to wrap talk text, and budgets each line as `2 * columns - 1` bytes |
 | `jywar.lua:22000` | `string.sub(s, n*2 - 1, n*2)` slices out the n-th character |
 | `jymain.lua:3624` | `string.len(s) / 2 * font` is how pixel widths are computed -- about thirty sites do this, in `/2` and `/4` variants |
-| `MyOEvent.lua:9360` | `string.byte(s, -1) > 127` tests for a trailing wide char |
+| `MyOEvent.lua:9491` | `string.byte(s, -1) > 127` tests for a trailing wide char |
 
 A CJK character is 3 bytes in UTF-8, so converting the literals without
 touching that arithmetic would slice characters in half when wrapping dialogue
