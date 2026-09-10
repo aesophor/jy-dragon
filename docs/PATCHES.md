@@ -61,12 +61,12 @@ names again, and both have to be redone before the diff means anything.
 
 ## Battle effect text stayed on screen for one frame
 
-`jyconst.lua:1782` -- new `CC.EffectTextMS`, default 40
-`jywar.lua:20603` -- was an empty `if CONFIG.Operation == 0 then end` block
-`jywar.lua:20897` -- was `lib.Delay(1)`
+`jyconst.lua:1792` -- new `CC.EffectTextMS`, default 40
+`jywar.lua:20642` -- was an empty `if CONFIG.Operation == 0 then end` block
+`jywar.lua:20934` -- was `lib.Delay(1)`
 
 `War_ShowFight` redraws a skill's effect text (击中破绽, 葵花移形, ...) once per
-frame for a fixed 20 frames (`jywar.lua:20836`). Two branches present those
+frame for a fixed 20 frames (`jywar.lua:20875`). Two branches present those
 frames, and only one of them is paced:
 
 | branch | original pacing |
@@ -580,6 +580,58 @@ line separator (`Split(text, "*")`), so 狐 and 冲 arrive in different draw
 calls with no neighbour to match on. That literal spells 沖 directly; it is
 unmapped by the table, so it passes through untouched. (The other wrapped
 occurrence, 令*狐冲, leaves 狐冲 contiguous and the rule catches it.)
+
+## Effect sprites left their tops behind
+
+`src/lib.c` -- `SaveSur` takes corners, not a size
+`jywar.lua:20622`, `20649` -- the caster's effect saves the screen
+`jywar.lua:20945` -- the per-person restore moved out of the branch above it
+
+Using a skill left pieces of its effect stranded in mid-air. Two separate
+faults, found by tracing every `SaveSur`, `LoadSur` and effect blit through a
+real fight -- forcing `WAR.AutoFight` on and feeding only arrow keys, since
+Return cancels auto-battle (`17736`).
+
+**`SaveSur(x1, y1, x2, y2)` was read as `(x, y, w, h)`.** `jymain.lua:8840`
+settles the convention: a centred dialogue box of width w saves
+
+    lib.SaveSur((CC.ScreenW - w) / 2 - 4, ...,
+                (CC.ScreenW + w) / 2 + 4, ...)
+
+which are that box's left and right edges with a 4px margin. Read as a width,
+the third argument would be `(1220 + w) / 2 + 4` -- never less than half the
+screen, whatever the box. Eleven of the sixteen callers pass the whole screen,
+where the two readings agree, which is why this stayed hidden. The five
+partial ones saved from their top-left corner to the far edge of the screen
+and then restored all of it, putting stale pixels back over whatever had
+changed in between.
+
+**The caster's effect loop saved a box too small for the art.** It reached
+`18 * CC.YScale` above the anchor, 162px with `CC.YScale` at 9. `eft/66`, the
+pillar the 九阴神功 talent fires (`10337` sets `特效动画 = 66` beside the
+九阴神功 text), reaches 181, so the top 19 rows of every frame were never
+erased -- and its frames shrink, 178 down through 65, 49, 47, 2, so a later
+frame could not cover what an earlier one left. Twenty of the 105 effect
+archives have art outside that box; `eft/53` escapes it by 159px, `eft/101` by
+228. The loop now saves the screen, which is what the engine's three other
+effect loops (`19014`, `15191`, and the per-person one) already did.
+
+The first attempt at this fixed a third fault that was not the one on screen:
+the per-person loop restored only inside
+
+    if var_122_64 then ... elseif var_122_65 then ... end
+
+so frames with no 特效文字 window open were drawn and left behind. Each
+affected person gets a slice of the twenty frames -- `var_122_53 =
+math.modf(20 / n)` (`20838`) -- and the slices do not tile the range, so with
+two people frame 10 belongs to neither. That restore is now unconditional. It
+was a real leak, and fixing it alone did not fix the symptom, which is what
+sent the trace after the caster loop.
+
+Verified by trace on the fixed build: 46 saves, all `0,0,1220,700`, and 2051
+restores, all at `0,0`. No partial save or restore is left in any effect path,
+and the effects still animate -- `eft/66` drew 230 frames at x=610, six other
+archives at their own positions.
 
 ## Debug aids for editing scenes and events
 

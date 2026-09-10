@@ -236,8 +236,38 @@ static int l_DrawStr(lua_State *L) {
     return 0;
 }
 
+/* SaveSur(x1, y1, x2, y2) -- CORNERS, not a size.
+ *
+ * jymain.lua:8840 settles it: a centred dialogue box of width w saves
+ *
+ *     lib.SaveSur((CC.ScreenW - w) / 2 - 4, ...,
+ *                 (CC.ScreenW + w) / 2 + 4, ...)
+ *
+ * which are that box's left and right edges with a 4px margin. Read as a
+ * width, the third argument would be (1220 + w) / 2 + 4 -- never less than
+ * half the screen, whatever the box.
+ *
+ * This was (x, y, w, h) here, which the eleven full-screen callers cannot
+ * tell apart -- SaveSur(0, 0, ScreenW, ScreenH) means the same thing either
+ * way -- so only the five partial ones were affected. They saved a region
+ * running from the top-left corner to the far edge of the screen and then
+ * restored all of it, putting stale pixels back over anything that had
+ * changed in between.
+ */
 static int l_SaveSur(lua_State *L) {
-    int x = argi(L, 1, 0), y = argi(L, 2, 0), w = argi(L, 3, 0), h = argi(L, 4, 0);
+    int x1 = argi(L, 1, 0), y1 = argi(L, 2, 0);
+    int x2 = argi(L, 3, 0), y2 = argi(L, 4, 0);
+    if (x2 < x1) {
+        int t = x1;
+        x1    = x2;
+        x2    = t;
+    }
+    if (y2 < y1) {
+        int t = y1;
+        y1    = y2;
+        y2    = t;
+    }
+    int x = x1, y = y1, w = x2 - x1, h = y2 - y1;
     if (w <= 0 || h <= 0) {
         lua_pushnumber(L, 0);
         return 1;

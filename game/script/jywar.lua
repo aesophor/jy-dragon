@@ -20619,7 +20619,12 @@ function War_ShowFight(arg_122_0, arg_122_1, arg_122_2, arg_122_3, arg_122_4, ar
 			if iter_122_6 == 1 and WAR.Person[WAR.CurID].特效动画 ~= -1 then
 				local var_122_32 = WAR.Person[WAR.CurID].特效动画
 				local var_122_33 = 0
-				local var_122_34 = lib.SaveSur(CC.ScreenW / 2 - 5 * CC.XScale, CC.ScreenH / 2 - var_122_22 - 18 * CC.YScale, CC.ScreenW / 2 + 5 * CC.XScale, CC.ScreenH / 2 - var_122_22 + 5 * CC.YScale)
+				-- [port] was a box reaching 18 * CC.YScale = 162px above the
+				-- anchor, less than the art reaches: eft/66, the 九阴神功 pillar,
+				-- goes up 181, so its tip was never erased. Twenty of the 105
+				-- effect archives escape that box. The engine's three other effect
+				-- loops all save the screen; see docs/PATCHES.md.
+				local var_122_34 = lib.SaveSur(0, 0, CC.ScreenW, CC.ScreenH)
 
 				for iter_122_7 = 1, CC.Effect[var_122_32] do
 					lib.PicLoadCache(WAR.EFT[var_122_32], (var_122_33 + iter_122_7) * 2, CC.ScreenW / 2, CC.ScreenH / 2 - var_122_22, 2, 192)
@@ -20641,7 +20646,7 @@ function War_ShowFight(arg_122_0, arg_122_1, arg_122_2, arg_122_3, arg_122_4, ar
 					-- [port] this loop had no pacing at all, so the text flashed past.
 					lib.Delay(CC.EffectTextMS)
 
-					lib.LoadSur(var_122_34, CC.ScreenW / 2 - 5 * CC.XScale, CC.ScreenH / 2 - var_122_22 - 18 * CC.YScale)
+					lib.LoadSur(var_122_34, 0, 0)
 				end
 
 				lib.FreeSur(var_122_34)
@@ -20928,13 +20933,16 @@ function War_ShowFight(arg_122_0, arg_122_1, arg_122_2, arg_122_3, arg_122_4, ar
 
 		if var_122_64 then
 			lib.ShowSurface(0)
-			lib.LoadSur(var_122_63, var_122_55, var_122_57)
 			lib.Delay(2 * CC.Frame)
 		elseif var_122_65 then
 			lib.ShowSurface(0)
-			lib.LoadSur(var_122_63, var_122_55, var_122_57)
 			lib.Delay(CC.EffectTextMS)  -- [port] was 1; the branch above uses 2 * CC.Frame
 		end
+
+		-- [port] restore on every frame, not only the ones with a 特效文字
+		-- window open; see docs/PATCHES.md. The frames in between were drawn
+		-- and then left on the surface for the next frame to pile onto.
+		lib.LoadSur(var_122_63, var_122_55, var_122_57)
 	end
 
 	lib.FreeSur(var_122_63)
