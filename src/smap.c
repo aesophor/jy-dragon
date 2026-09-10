@@ -67,12 +67,40 @@ bool jy_smap_load(const char *sfile, const char *dfile, int scenes, int w, int h
     return g_s && g_d;
 }
 
+/* Write the payload, not however long the file we loaded happened to be.
+ *
+ * slurp() sizes g_?_bytes from the file on disk, and the game appends a
+ * 12-byte-per-slot checksum table past the end of the D payload
+ * (write_content at 602800 + 12*slot in jymain.lua's SaveRecord). Copying
+ * that tail forward means a d-file can end up longer than its own field:
+ * save to a lower slot than the one you loaded and the 12 bytes LoadRecord
+ * reads back come out as the digits plus NUL padding, which byte10 expands
+ * to "0"s and hzbj then rejects -- a correct checksum failing on the shape
+ * of the file rather than its contents.
+ *
+ * The payload is a whole number of records and nothing else, so write
+ * exactly that: SaveRecord re-appends this slot's checksum afterwards and
+ * the file ends right after it, which is the shape read_files expects.
+ * Clamped by what we actually hold, so a short read at load cannot make us
+ * write past the buffer.
+ */
+static size_t payload_bytes(size_t have, size_t want) {
+    return have < want ? have : want;
+}
+
 bool jy_smap_save(const char *sfile, const char *dfile) {
-    bool ok = true;
+    bool   ok = true;
+    size_t sn = payload_bytes(g_s_bytes, (size_t)g_scenes * g_w * g_h * g_layers * 2);
+    size_t dn = payload_bytes(g_d_bytes, (size_t)g_scenes * g_dnum * g_dfields * 2);
+
+    if (sn != g_s_bytes || dn != g_d_bytes)
+        jy_log("SaveSMap: trimming to payload (S %zu->%zu, D %zu->%zu)", g_s_bytes, sn,
+               g_d_bytes, dn);
+
     if (g_s) {
         FILE *f = fopen(sfile, "wb");
         if (f) {
-            fwrite(g_s, 1, g_s_bytes, f);
+            fwrite(g_s, 1, sn, f);
             fclose(f);
         } else {
             jy_log("SaveSMap: cannot write %s", sfile);
@@ -82,7 +110,7 @@ bool jy_smap_save(const char *sfile, const char *dfile) {
     if (g_d) {
         FILE *f = fopen(dfile, "wb");
         if (f) {
-            fwrite(g_d, 1, g_d_bytes, f);
+            fwrite(g_d, 1, dn, f);
             fclose(f);
         } else {
             jy_log("SaveSMap: cannot write %s", dfile);
