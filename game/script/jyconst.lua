@@ -225,7 +225,7 @@ function SetGlobalConst()
 	CC.CircleNum = 1
 	CC.dengdai = 1
 	CC.TeamNum = 6
-	CC.YbNum = 3
+	CC.MercenaryNum = 3
 	CC.MyThingNum = 400
 	CC.Base_S = {}
 	CC.Base_S.乘船 = {
@@ -387,7 +387,7 @@ function SetGlobalConst()
 		}
 	end
 
-	for iter_1_1 = 1, CC.YbNum do
+	for iter_1_1 = 1, CC.MercenaryNum do
 		CC.Base_S["佣兵" .. iter_1_1] = {
 			72 + 2 * (iter_1_1 - 1),
 			0,

@@ -4,7 +4,7 @@ function IncludeFile()
 	require("jyconst")
 	require("readkdef")
 	require("jywar")
-	require("jyyb")
+	require("jymercenary") -- [port] renamed from jyyb
 	require("OEvent001")
 	require("OEvent8001")
 	require("OEvent6001")
@@ -914,7 +914,7 @@ function NewGame()
 				end
 			end
 
-			if not instruct_16(iter_11_7) and not ybdw(iter_11_7) then
+			if not instruct_16(iter_11_7) and not Mercenary_InTeam(iter_11_7) then
 				if iter_11_7 > 531 and iter_11_7 < 541 then
 					AddPersonAttrib(iter_11_7, "攻击力", 50)
 				end
@@ -1358,9 +1358,9 @@ function MMenu()
 			1
 		},
 		{
-			-- [port] Yb was never called; see docs/PATCHES.md.
+			-- [port] this row is new; see docs/PATCHES.md.
 			"佣兵",
-			Yb,
+			Mercenary_Menu,
 			1
 		},
 		{

@@ -18,6 +18,47 @@ The diff is the authoritative list; this file is the reasoning behind it. When
 a change is better expressed as a wrapper than as an edit, it goes in
 `src/compat.lua.h` instead -- see the bottom of this page.
 
+The mercenary script is renamed, not just edited. `ljd2` calls it `jyyb.lua`
+after the `Yb`/`yb` prefix on its functions, an abbreviation of 佣兵; both
+trees now call it `jymercenary.lua` and its eighteen functions carry a
+`Mercenary_` prefix:
+
+| ljd2 | ported | |
+|---|---|---|
+| `Yb` | `Mercenary_Menu` | the 佣兵 entry in `MMenu` |
+| `Ybcz` | `Mercenary_Menu_AutoJoin` | 出战 |
+| `Ybld_Status` | `Mercenary_Menu_Dismiss` | 解雇, was 放逐 |
+| `Yb_Menu_Status` | `Mercenary_Menu_Status` | dropped from the menu |
+| `Yb_Menu_Thing` | `Mercenary_Menu_Thing` | dropped from the menu |
+| `Yb_SelectTeamMenu` | `Mercenary_SelectTeamMenu` | twin of `SelectTeamMenu` |
+| `Yb_ShowPersonStatus` | `Mercenary_ShowPersonStatus` | twin of `ShowPersonStatus` |
+| `Yb_ShowPersonStatus_sub` | `Mercenary_ShowPersonStatus_sub` | |
+| `Yb_UseThing` | `Mercenary_UseThing` | twin of `UseThing` |
+| `Yb_DefaultUseThing` | `Mercenary_DefaultUseThing` | twin of `DefaultUseThing` |
+| `Yb_Thing` .. `Yb_Thing3` | `Mercenary_UseThing_Type1` .. `_Type3` | 类型 1, 2, 3 |
+| `Yb_GetYbNum` | `Mercenary_Count` | filled slots |
+| `YbPerson` | `Mercenary_ToggleWarEntry` | toggles `WAR.MercenaryJoin` |
+| `ybdw` | `Mercenary_InTeam` | 队伍; 27 call sites, mostly `jywar.lua` |
+| `ybjr` | `Mercenary_Join` | 加入 |
+| `sjyb` | `Mercenary_GenerateRandom` | 随机佣兵 |
+
+The names mirror `jymain.lua`'s own, so each mercenary function reads as the
+twin of the party function it was copied from. Two more identifiers went with
+them: `CC.YbNum` (the three mercenary slots) is now `CC.MercenaryNum`, and
+`WAR.YbPerson`, a per-slot 0/1/2 flag for who joins the current battle, is now
+`WAR.MercenaryJoin`. Neither is save data -- the save's own fields are the
+Chinese `JY.Base.佣兵N` keys, which keep their names.
+
+The rename itself is not marked `-- [port]` at each of its ~90 sites; the
+table above is the record. The one exception is `MyOEvent.lua:9049`, whose
+only difference from the pristine tree is a renamed constant -- it carries a
+marker so that a script with no `[port]` marker still means a pristine script.
+
+Renaming both trees keeps `make script-diff` line-oriented: rename only
+`game/script/` and the diff degrades to a whole-file add and remove, hiding
+every real edit. Re-running `ljd2` produces `jyyb.lua` and the old function
+names again, and both have to be redone before the diff means anything.
+
 ## Battle effect text stayed on screen for one frame
 
 `jyconst.lua:1782` -- new `CC.EffectTextMS`, default 40
@@ -284,31 +325,33 @@ Verified by probing `PlayMIDI` at startup: id 9002 resolved to
 ## The 佣兵 management menu was unreachable
 
 `jymain.lua:1360` -- a 佣兵 entry in `MMenu`
-`jyyb.lua:2` -- the "no mercenaries" check looks at every slot
-`jyyb.lua:22` -- 状态 and 物品 dropped from the menu
-`jyyb.lua:34`, `253`, `274` -- 放逐 renamed to 解雇
-`jyyb.lua:282` -- 解雇 no longer blanks a named NPC
+`jymercenary.lua:2` -- the "no mercenaries" check looks at every slot
+`jymercenary.lua:22` -- 状态 and 物品 dropped from the menu
+`jymercenary.lua:34`, `253`, `274` -- 放逐 renamed to 解雇
+`jymercenary.lua:282` -- 解雇 no longer blanks a named NPC
 
-`jyyb.lua` opens with `Yb()`, a four-entry menu -- 状态, 物品, 出战, 放逐 --
-and 放逐 -- now 解雇 -- (`Ybld_Status`) is a complete dismissal: it unequips weapon, armour
-and training item and releases each one's 使用人, cancels 佣兵出战 if that
-mercenary held it, clears the slot and compacts 1..3.
+`jymercenary.lua` opens with `Mercenary_Menu()`, a four-entry menu -- 状态,
+物品, 出战, 放逐 -- and 放逐 -- now 解雇 -- (`Mercenary_Menu_Dismiss`) is a
+complete dismissal: it unequips weapon, armour and training item and releases
+each one's 使用人, cancels 佣兵出战 if that mercenary held it, clears the slot
+and compacts 1..3.
 
-`Yb` appeared exactly once in all 20 scripts: its own `function Yb()` line.
-Nothing ever called it, so the only way to lose a 保镖 was one of the game's
-three involuntary paths -- failing to pay on their pay day
-(`OEvent6001:1970`), the scripted party-stripping down the well
-(`OEvent9001:8583`), or a quest releasing its own (`9324`). Hanging `Yb` off
-`MMenu` next to 离队 also brings back 出战 (`Ybcz`), which was orphaned the
-same way.
+`Mercenary_Menu` appeared exactly once in all 20 scripts: its own
+`function Mercenary_Menu()` line. Nothing ever called it, so the only way to
+lose a 保镖 was one of the game's three involuntary paths -- failing to pay on
+their pay day (`OEvent6001:1970`), the scripted party-stripping down the well
+(`OEvent9001:8583`), or a quest releasing its own (`9324`). Hanging
+`Mercenary_Menu` off `MMenu` next to 离队 also brings back 出战
+(`Mercenary_Menu_AutoJoin`), which was orphaned the same way.
 
 Two things had to change before that menu was safe to expose.
 
-**`Ybld_Status` blanked the person record** by copying template 597 over it.
-That is right for the three scratch slots `sjyb` generates random mercenaries
-into (594-596), and destructive for anything else: a 保镖 hired from an event
-is a *named NPC* -- 647 is 镖师张海, and 417, 418, 648-655 are others -- so
-dismissing one would have overwritten that character permanently in the save.
+**`Mercenary_Menu_Dismiss` blanked the person record** by copying template 597
+over it. That is right for the three scratch slots `Mercenary_GenerateRandom`
+generates random mercenaries into (594-596), and destructive for anything
+else: a 保镖 hired from an event is a *named NPC* -- 647 is 镖师张海, and 417,
+418, 648-655 are others -- so dismissing one would have overwritten that
+character permanently in the save.
 
 Named NPCs are now released the way the game's own code releases them, by
 clearing 佛学修为. That field is the "currently engaged" flag, and the
@@ -319,9 +362,9 @@ before clearing the slot (`OEvent6001:1975`); and re-hiring into an occupied
 slot clears the outgoing mercenary's (`OEvent9001:9838`). So a dismissed
 保镖 becomes re-hireable, which is what those sites intend.
 
-In practice only the `else` branch runs today, since `sjyb` is orphaned too
-and nothing puts anyone in 594-596. The original path is kept for it rather
-than deleted.
+In practice only the `else` branch runs today, since
+`Mercenary_GenerateRandom` is orphaned too and nothing puts anyone in 594-596.
+The original path is kept for it rather than deleted.
 
 The entry is 解雇 rather than the original 放逐 ("banish"), and the
 confirmation reads 已将<name>解雇 rather than 将<name>驱逐出队伍 -- these are
@@ -333,21 +376,22 @@ a neat demonstration of why that pass exists.)
 
 The menu ships with two of the original four entries, 出战 and 解雇; 状态 and
 物品 are dropped. Deleting the rows outright is safe here where it was not for
-打赏&赞助 -- `Yb` passes `#var_1_0` as the count and discards `ShowMenu`'s
-return, so no index survives the removal to be renumbered.
+打赏&赞助 -- `Mercenary_Menu` passes `#var_1_0` as the count and discards
+`ShowMenu`'s return, so no index survives the removal to be renumbered.
 
-That leaves `Yb_Menu_Status` and `Yb_Menu_Thing` unreferenced, and with them
-everything below: `Yb_ShowPersonStatus`, `Yb_ShowPersonStatus_sub`, `Yb_Thing`
-through `Yb_Thing3`, `Yb_UseThing`, `Yb_DefaultUseThing`. They stay in the
-file. Nothing else reaches them, so the 资质 fix below is now unreachable too
--- kept because it is correct if 状态 is ever put back.
+That leaves `Mercenary_Menu_Status` and `Mercenary_Menu_Thing` unreferenced,
+and with them everything below: `Mercenary_ShowPersonStatus`,
+`Mercenary_ShowPersonStatus_sub`, `Mercenary_UseThing_Type1` through
+`Mercenary_UseThing_Type3`, `Mercenary_UseThing`, `Mercenary_DefaultUseThing`.
+They stay in the file. Nothing else reaches them, so the 资质 fix below is now
+unreachable too -- kept because it is correct if 状态 is ever put back.
 
-**`Yb` tested only slot 1** for emptiness. The 保镖 hire menu lets you choose
-*which* slot to fill (`OEvent9001:9836-9853`), so slot 2 or 3 can hold
-someone while 1 is empty, and the menu would have refused to open. It now
-scans all `CC.YbNum` slots. `Yb_SelectTeamMenu` already handled gaps -- it
-builds all three rows and enables only the live ones -- so nothing else
-needed changing.
+**`Mercenary_Menu` tested only slot 1** for emptiness. The 保镖 hire menu lets
+you choose *which* slot to fill (`OEvent9001:9836-9853`), so slot 2 or 3 can
+hold someone while 1 is empty, and the menu would have refused to open. It now
+scans all `CC.MercenaryNum` slots. `Mercenary_SelectTeamMenu` already handled
+gaps -- it builds all three rows and enables only the live ones -- so nothing
+else needed changing.
 
 Verified by lifting the new check into a stub harness and running every slot
 combination: refuses only when all three are empty, opens for
@@ -357,27 +401,28 @@ combination: refuses only when all three are empty, opens for
 
 `jywar.lua:7529` -- take the auto-battle mercenary without asking
 
-`Ybcz` (佣兵 -> 出战) sets `JY.Base.佣兵出战` to a mercenary who should join
-every fight. Only one of the two paths through `WarSelectTeam` honoured it.
+`Mercenary_Menu_AutoJoin` (佣兵 -> 出战) sets `JY.Base.佣兵出战` to a
+mercenary who should join every fight. Only one of the two paths through
+`WarSelectTeam` honoured it.
 
 Battles that pre-pick their participants (`WAR.Data.自动选择参战人1`) reach
 the branch at `7414`, which adds `佣兵出战` and then returns early. Every
 other battle falls through to the manual path, which reset all the
-`WAR.YbPerson` flags, asked 是否带佣兵出战, and made you pick from a toggle
-menu -- so the setting did nothing exactly where it would save the most
+`WAR.MercenaryJoin` flags, asked 是否带佣兵出战, and made you pick from a
+toggle menu -- so the setting did nothing exactly where it would save the most
 clicking.
 
 The manual path now checks for the auto-battle mercenary first and, finding
 one, places them and skips both prompts. It resolves them by *slot*, walking
-`JY.Base.佣兵1..3` for a match, which is also what makes a stale
-`佣兵出战` harmless -- and stale is reachable: `Ybld_Status` clears the flag
-when it dismisses that mercenary (`jyyb.lua:276`), but the event dismissals
-do not, neither the can't-pay path (`OEvent6001:1975`) nor the well
+`JY.Base.佣兵1..3` for a match, which is also what makes a stale `佣兵出战`
+harmless -- and stale is reachable: `Mercenary_Menu_Dismiss` clears the flag
+when it dismisses that mercenary (`jymercenary.lua:276`), but the event
+dismissals do not, neither the can't-pay path (`OEvent6001:1975`) nor the well
 (`OEvent9001:8583`). No matching slot means no match, and you get the prompt.
 
-Gated on `生命 > 0` as `Yb_SelectTeamMenu` is. Skipping the prompt removes the
-only chance to decline, so a dead mercenary falls through and you choose
-rather than fielding a corpse.
+Gated on `生命 > 0` as `Mercenary_SelectTeamMenu` is. Skipping the prompt
+removes the only chance to decline, so a dead mercenary falls through and you
+choose rather than fielding a corpse.
 
 Verified by lifting the new block into a stub harness:
 
@@ -390,13 +435,13 @@ Verified by lifting the new block into a stub harness:
 
 ## 佣兵 > 状态 crashed on a field that is not in the schema
 
-`jyyb.lua:860` -- drop the 资质 row
+`jymercenary.lua:860` -- drop the 资质 row
 
 (This panel is no longer reachable -- 状态 was dropped from the menu above.
 The fix stands for whenever it is put back.)
 
-`Yb_ShowPersonStatus_sub` draws 13 stat rows, and the last one killed the
-game as soon as the menu became reachable:
+`Mercenary_ShowPersonStatus_sub` draws 13 stat rows, and the last one killed
+the game as soon as the menu became reachable:
 
     script/jymain.lua:4497: attempt to index local 'var_90_0' (a nil value)
 
@@ -407,12 +452,13 @@ the record schema (`jymain.lua:4134`): `__index` calls
 does not define has nowhere to live -- `GetDataFromStruct` indexes the nil
 schema entry and dies. `资质` is such a key.
 
-It is not a typo, it is a field the mod uses and never declared. `sjyb` rolls
-one for a generated mercenary (`jyyb.lua:1516`) and scales 攻击力, 防御力 and
-轻功 from it; `MyOEvent` reads it twice (`9716`, `9973`). Every one of those
-would crash the same way -- `sjyb` is orphaned so it never runs, and the two
-`MyOEvent` sites are latent. This was never reachable before because `Yb`
-itself was not.
+It is not a typo, it is a field the mod uses and never declared.
+`Mercenary_GenerateRandom` rolls one for a generated mercenary
+(`jymercenary.lua:1516`) and scales 攻击力, 防御力 and 轻功 from it;
+`MyOEvent` reads it twice (`9716`, `9973`). Every one of those would crash the
+same way -- `Mercenary_GenerateRandom` is orphaned so it never runs, and the
+two `MyOEvent` sites are latent. This was never reachable before because
+`Mercenary_Menu` itself was not.
 
 Probed at runtime rather than by reading jyconst: the other twelve rows all
 resolve to real offsets (攻击力 106, 轻功 108, 防御力 110, 医疗能力 112,

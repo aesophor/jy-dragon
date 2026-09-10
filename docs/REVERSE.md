@@ -624,7 +624,7 @@ honoured -- 21 script sites use it to mean "no clipping".
 
 Two smaller findings from the same disassembly, both left alone for now:
 `sub_402070` reads only **five** arguments, so the 6th alpha argument this
-port accepts is an extension (`jyyb.lua:438` and `jymain.lua:5946` pass 128
+port accepts is an extension (`jymercenary.lua:438` and `jymain.lua:5946` pass 128
 and get an opaque fill in the original); and both the fill and the clip rect
 are built **exclusive** of `x2`/`y2`, where this port treats them as
 inclusive.

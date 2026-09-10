@@ -9046,7 +9046,7 @@ function DYRW()
 	local var_16_6 = "队伍"
 
 	if var_16_4 == 2 then
-		var_16_5 = CC.YbNum
+		var_16_5 = CC.MercenaryNum  -- [port] was CC.YbNum
 		var_16_6 = "佣兵"
 	end
 

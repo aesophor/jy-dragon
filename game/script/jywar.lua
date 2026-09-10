@@ -1355,7 +1355,7 @@ function baseRandom(arg_26_0)
 
 	local var_26_5 = var_26_0 + limitX(math.modf(JY.Person[arg_26_0].内力 / 800), 0, 12) + math.modf(JY.Person[arg_26_0].生命最大值 * 2 / (JY.Person[arg_26_0].生命 + 100))
 
-	if instruct_16(arg_26_0) or ybdw(arg_26_0) then
+	if instruct_16(arg_26_0) or Mercenary_InTeam(arg_26_0) then
 		for iter_26_4 = 1, #TeamP do
 			if TeamP[iter_26_4] ~= nil and TeamP[iter_26_4] == arg_26_0 then
 				local var_26_6 = math.modf(JY.Person[arg_26_0].实战 / 25 + 1)
@@ -1548,7 +1548,7 @@ function WarSetGlobal()
 	WAR = {}
 	WAR.Data = {}
 	WAR.SelectPerson = {}
-	WAR.YbPerson = {}
+	WAR.MercenaryJoin = {}
 	WAR.Person = {}
 
 	for iter_31_0 = 0, 30 do
@@ -3808,7 +3808,7 @@ function War_WugongHurtLife(arg_32_0, arg_32_1, arg_32_2, arg_32_3, arg_32_4, ar
 				WAR.Person[arg_32_0].特效文字2 = WAR.Person[arg_32_0].特效文字2 .. "+" .. "借力消力"
 			end
 		else
-			if not instruct_16(var_32_1) and not ybdw(var_32_1) then
+			if not instruct_16(var_32_1) and not Mercenary_InTeam(var_32_1) then
 				WAR.fthurt = math.modf(var_32_49 * 0.1)
 			elseif JY.Person[var_32_1].主功体 == 97 then
 				WAR.fthurt = math.modf(var_32_49 * 0.2)
@@ -6732,7 +6732,7 @@ function War_WugongHurtLife(arg_32_0, arg_32_1, arg_32_2, arg_32_3, arg_32_4, ar
 		end
 	end
 
-	if JY.Person[var_32_1].生命 <= 0 and (instruct_16(var_32_0) or ybdw(var_32_0)) and var_32_4() and WAR.SZJPYX[var_32_1] == nil then
+	if JY.Person[var_32_1].生命 <= 0 and (instruct_16(var_32_0) or Mercenary_InTeam(var_32_0)) and var_32_4() and WAR.SZJPYX[var_32_1] == nil then
 		local var_32_183 = {
 			102,
 			295,
@@ -7522,21 +7522,21 @@ function WarSelectTeam()
 		end
 	until WAR.PersonNum > 0
 
-	for iter_39_9 = 1, CC.YbNum do
-		WAR.YbPerson[iter_39_9] = 0
+	for iter_39_9 = 1, CC.MercenaryNum do
+		WAR.MercenaryJoin[iter_39_9] = 0
 	end
 
-	-- [port] 自动出战. Ybcz sets JY.Base.佣兵出战 to a mercenary who should
-	-- join every fight, but only the scripted auto-select path above honoured
-	-- it (7414). The manual path asked 是否带佣兵出战 and then made you pick
-	-- all over again. Take them without asking and skip both prompts.
+	-- [port] 自动出战. Mercenary_Menu_AutoJoin points JY.Base.佣兵出战 at
+	-- a mercenary who joins every fight, but only the auto-select path
+	-- above honoured it (7414). The manual path asked 是否带佣兵出战,
+	-- then made you pick again. Take them without asking.
 	--
-	-- Gated on 生命 > 0 the way Yb_SelectTeamMenu is: with no prompt there is
-	-- no way to decline, so a dead mercenary falls through and you choose.
+	-- Gated on 生命 > 0 as Mercenary_SelectTeamMenu is: with no prompt, a
+	-- dead mercenary falls through and you choose.
 	local var_39_13 = -1
 
 	if JY.Base.佣兵出战 > -1 and JY.Person[JY.Base.佣兵出战].生命 > 0 then
-		for iter_39_12 = 1, CC.YbNum do
+		for iter_39_12 = 1, CC.MercenaryNum do
 			if JY.Base["佣兵" .. iter_39_12] == JY.Base.佣兵出战 then
 				var_39_13 = iter_39_12
 
@@ -7546,7 +7546,7 @@ function WarSelectTeam()
 	end
 
 	if var_39_13 > 0 then
-		WAR.YbPerson[var_39_13] = 1
+		WAR.MercenaryJoin[var_39_13] = 1
 		WAR.Person[WAR.PersonNum].人物编号 = JY.Base.佣兵出战
 		WAR.Person[WAR.PersonNum].我方 = true
 		WAR.Person[WAR.PersonNum].坐标X = WAR.Data["我方X" .. var_39_13] + 1
@@ -7557,10 +7557,10 @@ function WarSelectTeam()
 	elseif (JY.Base.佣兵1 > -1 or JY.Base.佣兵2 > -1 or JY.Base.佣兵3 > -1) and DrawStrBoxYesNo(-1, -1, "是否带佣兵出战？", C_WHITE, CC.DefaultFont) == true then
 		local var_39_8 = {}
 
-		for iter_39_10 = 1, CC.YbNum do
+		for iter_39_10 = 1, CC.MercenaryNum do
 			var_39_8[iter_39_10] = {
 				"",
-				YbPerson,
+				Mercenary_ToggleWarEntry,
 				0
 			}
 
@@ -7571,17 +7571,17 @@ function WarSelectTeam()
 
 				local var_39_10 = JY.Person[var_39_9].姓名
 
-				if WAR.YbPerson[iter_39_10] == 1 then
+				if WAR.MercenaryJoin[iter_39_10] == 1 then
 					var_39_8[iter_39_10][1] = "#" .. var_39_10
-					WAR.YbPerson[iter_39_10] = 1
+					WAR.MercenaryJoin[iter_39_10] = 1
 				else
 					var_39_8[iter_39_10][1] = " " .. var_39_10
-					WAR.YbPerson[iter_39_10] = 0
+					WAR.MercenaryJoin[iter_39_10] = 0
 				end
 			end
 		end
 
-		var_39_8[CC.YbNum + 1] = {
+		var_39_8[CC.MercenaryNum + 1] = {
 			" 结束",
 			nil,
 			1
@@ -7594,12 +7594,12 @@ function WarSelectTeam()
 
 			DrawStrBox(var_39_11, 10, "请选择参战人物", C_WHITE, CC.DefaultFont)
 
-			local var_39_12 = ShowMenu(var_39_8, CC.YbNum + 1, 0, var_39_11, 10 + CC.SingleLineHeight, 0, 0, 1, 0, CC.DefaultFont, C_ORANGE, C_WHITE)
+			local var_39_12 = ShowMenu(var_39_8, CC.MercenaryNum + 1, 0, var_39_11, 10 + CC.SingleLineHeight, 0, 0, 1, 0, CC.DefaultFont, C_ORANGE, C_WHITE)
 
 			Cls()
 
 			for iter_39_11 = 1, 3 do
-				if WAR.YbPerson[iter_39_11] > 0 then
+				if WAR.MercenaryJoin[iter_39_11] > 0 then
 					WAR.Person[WAR.PersonNum].人物编号 = JY.Base["佣兵" .. iter_39_11]
 					WAR.Person[WAR.PersonNum].我方 = true
 					WAR.Person[WAR.PersonNum].坐标X = WAR.Data["我方X" .. iter_39_11] + 1
@@ -8429,7 +8429,7 @@ function War_AddPersonLVUP(arg_49_0)
 			var_49_3 = var_49_3 + math.random(2)
 		end
 
-		if ybdw(arg_49_0) then
+		if Mercenary_InTeam(arg_49_0) then
 			var_49_3 = math.modf(var_49_3 - var_49_3 / 3)
 		end
 
@@ -8474,7 +8474,7 @@ function War_AddPersonLVUP(arg_49_0)
 		var_49_6 = var_49_6 + 2
 	end
 
-	if ybdw(arg_49_0) then
+	if Mercenary_InTeam(arg_49_0) then
 		var_49_6 = 0
 	end
 
@@ -8488,7 +8488,7 @@ function War_AddPersonLVUP(arg_49_0)
 
 	local var_49_7 = var_49_6 * var_49_1
 
-	if ybdw(arg_49_0) then
+	if Mercenary_InTeam(arg_49_0) then
 		local var_49_8 = math.random(var_49_7 + 1) - 1
 		local var_49_9 = limitX(math.random(var_49_7 + 1 - var_49_8) - 1, 0, var_49_7)
 		local var_49_10 = limitX(math.random(var_49_7 + 1 - var_49_8 - var_49_9) - 1, 0, var_49_7)
@@ -8567,7 +8567,7 @@ function War_EndPersonData(arg_51_0, arg_51_1)
 	for iter_51_0 = 0, WAR.PersonNum - 1 do
 		local var_51_0 = WAR.Person[iter_51_0].人物编号
 
-		if not instruct_16(var_51_0) or ybdw(var_51_0) then
+		if not instruct_16(var_51_0) or Mercenary_InTeam(var_51_0) then
 			JY.Person[var_51_0].生命 = JY.Person[var_51_0].生命最大值
 			JY.Person[var_51_0].内力 = JY.Person[var_51_0].内力最大值
 			JY.Person[var_51_0].体力 = CC.PersonAttribMax.体力
@@ -8676,7 +8676,7 @@ function War_EndPersonData(arg_51_0, arg_51_1)
 		for iter_51_4 = 0, WAR.PersonNum - 1 do
 			local var_51_5 = WAR.Person[iter_51_4].人物编号
 
-			if WAR.Person[iter_51_4].我方 == true and (instruct_16(var_51_5) or ybdw(var_51_5)) and JY.Person[var_51_5].生命 > 0 then
+			if WAR.Person[iter_51_4].我方 == true and (instruct_16(var_51_5) or Mercenary_InTeam(var_51_5)) and JY.Person[var_51_5].生命 > 0 then
 				if var_51_5 == 0 then
 					local var_51_6 = true
 				end
@@ -8709,7 +8709,7 @@ function War_EndPersonData(arg_51_0, arg_51_1)
 	for iter_51_7 = 0, WAR.PersonNum - 1 do
 		local var_51_8 = WAR.Person[iter_51_7].人物编号
 
-		if WAR.Person[iter_51_7].我方 == true and (instruct_16(var_51_8) or ybdw(var_51_8)) then
+		if WAR.Person[iter_51_7].我方 == true and (instruct_16(var_51_8) or Mercenary_InTeam(var_51_8)) then
 			AddPersonAttrib(var_51_8, "经验", math.modf(WAR.Person[iter_51_7].经验))
 			DrawStrBoxWaitKey(string.format("%s 获得经验点数 %d", JY.Person[var_51_8].姓名, WAR.Person[iter_51_7].经验), C_WHITE, CC.DefaultFont)
 			War_AddPersonLVUP(var_51_8)
@@ -11205,7 +11205,7 @@ function War_Fight_Sub(arg_54_0, arg_54_1, arg_54_2, arg_54_3)
 			WAR.WS = 1
 		end
 
-		if ybdw(var_54_0) then
+		if Mercenary_InTeam(var_54_0) then
 			WAR.WS = 1
 		end
 
@@ -13009,7 +13009,7 @@ function War_Fight_Sub(arg_54_0, arg_54_1, arg_54_2, arg_54_3)
 			var_54_99 = JY.Thing[var_54_98].练出武功
 		end
 
-		if instruct_16(var_54_0) and (WAR.Effect == 2 or WAR.Effect == 3) or ybdw(var_54_0) then
+		if instruct_16(var_54_0) and (WAR.Effect == 2 or WAR.Effect == 3) or Mercenary_InTeam(var_54_0) then
 			if JY.Person[var_54_0]["武功等级" .. arg_54_1] < 900 then
 				if JY.Person[var_54_0]["武功" .. arg_54_1] == var_54_99 then
 					if JY.Wugong[var_54_99].武功等级 >= 10 then
@@ -16129,7 +16129,7 @@ function GetJiqi()
 				WAR.Person[iter_72_0].TimeAdd = WAR.Person[iter_72_0].TimeAdd + 10
 			end
 
-			if (instruct_16(var_72_4) or ybdw(var_72_4)) and JY.Person[var_72_4].防具 == 230 then
+			if (instruct_16(var_72_4) or Mercenary_InTeam(var_72_4)) and JY.Person[var_72_4].防具 == 230 then
 				WAR.Person[iter_72_0].TimeAdd = WAR.Person[iter_72_0].TimeAdd + 5
 
 				if cxtd(var_72_4, 590) then
@@ -16145,7 +16145,7 @@ function GetJiqi()
 				end
 			end
 
-			if (instruct_16(var_72_4) or ybdw(var_72_4)) and (JY.Person[var_72_4].防具 == 353 or JY.Person[var_72_4].防具 == 354) then
+			if (instruct_16(var_72_4) or Mercenary_InTeam(var_72_4)) and (JY.Person[var_72_4].防具 == 353 or JY.Person[var_72_4].防具 == 354) then
 				WAR.Person[iter_72_0].TimeAdd = WAR.Person[iter_72_0].TimeAdd + 3
 
 				if cxtd(var_72_4, 590) then
@@ -16183,7 +16183,7 @@ function GetJiqi()
 				end
 			end
 
-			if not inteam(var_72_4) and not ybdw(var_72_4) then
+			if not inteam(var_72_4) and not Mercenary_InTeam(var_72_4) then
 				if JY.Base.游戏难度 == 1 then
 					WAR.Person[iter_72_0].TimeAdd = math.modf(WAR.Person[iter_72_0].TimeAdd * 0.8)
 				elseif JY.Base.游戏难度 == 2 then
@@ -17084,7 +17084,7 @@ function WarDrawAtt(arg_76_0, arg_76_1, arg_76_2, arg_76_3, arg_76_4, arg_76_5, 
 				local var_76_36, var_76_37 = var_76_35(var_76_7[iter_76_30][1], var_76_7[iter_76_30][2], var_76_0, var_76_1)
 
 				if GetWarMap(var_76_7[iter_76_30][1], var_76_7[iter_76_30][2], 2) ~= nil and GetWarMap(var_76_7[iter_76_30][1], var_76_7[iter_76_30][2], 2) >= 0 and GetWarMap(var_76_7[iter_76_30][1], var_76_7[iter_76_30][2], 2) ~= WAR.CurID then
-					if not instruct_16(WAR.Person[GetWarMap(var_76_7[iter_76_30][1], var_76_7[iter_76_30][2], 2)].人物编号) and ybdw(WAR.Person[GetWarMap(var_76_7[iter_76_30][1], var_76_7[iter_76_30][2], 2)].人物编号) == false and WAR.Person[WAR.CurID].我方 then
+					if not instruct_16(WAR.Person[GetWarMap(var_76_7[iter_76_30][1], var_76_7[iter_76_30][2], 2)].人物编号) and Mercenary_InTeam(WAR.Person[GetWarMap(var_76_7[iter_76_30][1], var_76_7[iter_76_30][2], 2)].人物编号) == false and WAR.Person[WAR.CurID].我方 then
 						local var_76_38 = WAR.Person[WAR.CurID].坐标X
 						local var_76_39 = WAR.Person[WAR.CurID].坐标Y
 						local var_76_40 = var_76_7[iter_76_30][1] - var_76_38
@@ -17667,7 +17667,7 @@ function WarMain(arg_78_0, arg_78_1, arg_78_2, arg_78_3)
 	for iter_78_26 = 0, WAR.PersonNum - 1 do
 		local var_78_18 = WAR.Person[iter_78_26].人物编号
 
-		if not instruct_16(var_78_18) and not ybdw(var_78_18) then
+		if not instruct_16(var_78_18) and not Mercenary_InTeam(var_78_18) then
 			if JY.Base.游戏难度 == 1 then
 				WAR.ZYZ[var_78_18] = 100
 			elseif JY.Base.游戏难度 == 2 then
@@ -17681,7 +17681,7 @@ function WarMain(arg_78_0, arg_78_1, arg_78_2, arg_78_3)
 			end
 		end
 
-		if instruct_16(var_78_18) or ybdw(var_78_18) then
+		if instruct_16(var_78_18) or Mercenary_InTeam(var_78_18) then
 			WAR.ZYZ[var_78_18] = 100
 		end
 
@@ -18211,7 +18211,7 @@ function WarMain(arg_78_0, arg_78_1, arg_78_2, arg_78_3)
 						end
 					end
 
-					if WAR.ZYZ[var_78_25] > 50 and not cxtd(var_78_25, 68) and not instruct_16(var_78_25) and not ybdw(var_78_25) then
+					if WAR.ZYZ[var_78_25] > 50 and not cxtd(var_78_25, 68) and not instruct_16(var_78_25) and not Mercenary_InTeam(var_78_25) then
 						for iter_78_36 = 0, WAR.PersonNum - 1 do
 							if WAR.Person[iter_78_36].人物编号 == 68 and WAR.Person[iter_78_36].死亡 == false then
 								WAR.ZYZ[var_78_25] = WAR.ZYZ[var_78_25] - 10
@@ -22531,7 +22531,7 @@ function myrandom(arg_134_0, arg_134_1)
 		arg_134_0 = arg_134_0 + 40
 	end
 
-	if instruct_16(arg_134_1) or ybdw(arg_134_1) then
+	if instruct_16(arg_134_1) or Mercenary_InTeam(arg_134_1) then
 		for iter_134_2 = 1, #TeamP do
 			if TeamP[iter_134_2] == arg_134_1 then
 				local var_134_1 = math.modf(JY.Person[arg_134_1].实战 / 25 + 1)
@@ -22667,7 +22667,7 @@ function War_PersonTrainBook(arg_139_0)
 	local var_139_3 = 0
 	local var_139_4 = 0
 
-	for iter_139_0 = 1, CC.YbNum do
+	for iter_139_0 = 1, CC.MercenaryNum do
 		var_139_4 = arg_139_0 == JY.Base["佣兵" .. iter_139_0] and 12 or 20
 	end
 

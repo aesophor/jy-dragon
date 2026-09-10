@@ -1,10 +1,10 @@
-function Yb()
+function Mercenary_Menu()
 	-- [port] checking slot 1 alone is not enough now that this menu is
 	-- reachable: the 保镖 hire lets you choose which slot to fill, so 2 or
 	-- 3 can hold someone while 1 is empty.
 	local var_1_2 = false
 
-	for iter_1_0 = 1, CC.YbNum do
+	for iter_1_0 = 1, CC.MercenaryNum do
 		if JY.Base["佣兵" .. iter_1_0] >= 0 then
 			var_1_2 = true
 
@@ -22,12 +22,12 @@ function Yb()
 		-- [port] 状态 and 物品 removed; see docs/PATCHES.md.
 		{
 			"出战",
-			Ybcz,
+			Mercenary_Menu_AutoJoin,
 			1
 		},
 		{
 			"解雇",  -- [port] was 放逐/驱逐出队伍; see docs/PATCHES.md
-			Ybld_Status,
+			Mercenary_Menu_Dismiss,
 			1
 		}
 	}
@@ -36,14 +36,14 @@ function Yb()
 	return 1
 end
 
-function Yb_Menu_Status()
+function Mercenary_Menu_Status()
 	DrawStrBox(CC.MainSubMenuX * 1.9, CC.MainSubMenuY, "要查阅谁的状态", C_WHITE, CC.DefaultFont)
 
 	local var_2_0 = CC.MainSubMenuY + CC.SingleLineHeight
-	local var_2_1 = Yb_SelectTeamMenu(CC.MainSubMenuX, var_2_0)
+	local var_2_1 = Mercenary_SelectTeamMenu(CC.MainSubMenuX, var_2_0)
 
 	if var_2_1 > 0 then
-		Yb_ShowPersonStatus(var_2_1)
+		Mercenary_ShowPersonStatus(var_2_1)
 
 		return 1
 	else
@@ -53,7 +53,7 @@ function Yb_Menu_Status()
 	end
 end
 
-function Yb_Menu_Thing()
+function Mercenary_Menu_Thing()
 	local var_3_0 = {
 		{
 			"神兵宝甲",
@@ -92,7 +92,7 @@ function Yb_Menu_Thing()
 			DrawStrBox(CC.MainSubMenuX * 5, CC.MainSubMenuY, "请选择要收回哪个佣兵的物品？", C_WHITE, CC.DefaultFont)
 
 			local var_3_11 = CC.MainSubMenuY + CC.SingleLineHeight
-			local var_3_12 = Yb_SelectTeamMenu(CC.MainSubMenuX * 3, var_3_11)
+			local var_3_12 = Mercenary_SelectTeamMenu(CC.MainSubMenuX * 3, var_3_11)
 
 			if var_3_12 == 0 then
 				return
@@ -135,7 +135,7 @@ function Yb_Menu_Thing()
 			DrawStrBox(CC.MainSubMenuX * 5, CC.MainSubMenuY, "请选择要查看哪个佣兵的物品？", C_WHITE, CC.DefaultFont)
 
 			local var_3_14 = CC.MainSubMenuY + CC.SingleLineHeight
-			local var_3_15 = Yb_SelectTeamMenu(CC.MainSubMenuX * 3, var_3_14)
+			local var_3_15 = Mercenary_SelectTeamMenu(CC.MainSubMenuX * 3, var_3_14)
 
 			if var_3_15 == 0 then
 				return
@@ -206,7 +206,7 @@ function Yb_Menu_Thing()
 			local var_3_22 = SelectThing(var_3_18, var_3_19)
 
 			if var_3_22 >= 0 then
-				Yb_UseThing(var_3_22)
+				Mercenary_UseThing(var_3_22)
 
 				return 1
 			end
@@ -216,7 +216,7 @@ function Yb_Menu_Thing()
 	return 0
 end
 
-function Ybcz()
+function Mercenary_Menu_AutoJoin()
 	DrawStrBox(CC.MainSubMenuX * 1.9, CC.MainSubMenuY, "设置佣兵出战", C_WHITE, CC.DefaultFont)
 
 	local var_4_0 = CC.MainSubMenuY + CC.SingleLineHeight
@@ -229,7 +229,7 @@ function Ybcz()
 		return 1
 	end
 
-	local var_4_1 = Yb_SelectTeamMenu(CC.MainSubMenuX, var_4_0)
+	local var_4_1 = Mercenary_SelectTeamMenu(CC.MainSubMenuX, var_4_0)
 
 	if var_4_1 > 0 then
 		JY.Base.佣兵出战 = JY.Base["佣兵" .. var_4_1]
@@ -244,11 +244,11 @@ function Ybcz()
 	end
 end
 
-function Ybld_Status()
+function Mercenary_Menu_Dismiss()
 	DrawStrBox(CC.MainSubMenuX * 1.9, CC.MainSubMenuY, "要将哪个佣兵解雇?", C_WHITE, CC.DefaultFont)  -- [port] was 放逐/驱逐出队伍; see docs/PATCHES.md
 
 	local var_5_0 = CC.MainSubMenuY + CC.SingleLineHeight
-	local var_5_1 = Yb_SelectTeamMenu(CC.MainSubMenuX, var_5_0)
+	local var_5_1 = Mercenary_SelectTeamMenu(CC.MainSubMenuX, var_5_0)
 
 	if var_5_1 > 0 then
 		if JY.Person[JY.Base["佣兵" .. var_5_1]].武器 >= 0 then
@@ -275,10 +275,10 @@ function Ybld_Status()
 		end
 
 		-- [port] see docs/PATCHES.md. Blanking the record from template 597
-		-- is only safe for the three scratch slots sjyb generates into. A
-		-- 保镖 hired from an event is a named NPC, and overwriting one would
-		-- destroy that character in the save. Release those the way the
-		-- game's own dismissals do, by clearing the 佛学修为 "engaged" flag.
+		-- is safe only for the scratch slots Mercenary_GenerateRandom
+		-- fills. A 保镖 hired from an event is a named NPC, and
+		-- overwriting one destroys that character in the save.
+		-- Release those as the game does, by clearing 佛学修为.
 		local var_5_2 = JY.Base["佣兵" .. var_5_1]
 
 		if var_5_2 >= 594 and var_5_2 <= 596 then
@@ -312,21 +312,21 @@ function Ybld_Status()
 	end
 end
 
-function Yb_DefaultUseThing(arg_6_0)
+function Mercenary_DefaultUseThing(arg_6_0)
 	if JY.Thing[arg_6_0].类型 == 1 then
-		return Yb_Thing(arg_6_0)
+		return Mercenary_UseThing_Type1(arg_6_0)
 	elseif JY.Thing[arg_6_0].类型 == 2 then
-		return Yb_Thing2(arg_6_0)
+		return Mercenary_UseThing_Type2(arg_6_0)
 	elseif JY.Thing[arg_6_0].类型 == 3 then
-		return Yb_Thing3(arg_6_0)
+		return Mercenary_UseThing_Type3(arg_6_0)
 	end
 end
 
-function Yb_Thing(arg_7_0)
+function Mercenary_UseThing_Type1(arg_7_0)
 	DrawStrBox(CC.MainSubMenuX, CC.MainSubMenuY, string.format("谁要配备%s?", JY.Thing[arg_7_0].名称), C_WHITE, CC.DefaultFont)
 
 	local var_7_0 = CC.MainSubMenuY + CC.SingleLineHeight
-	local var_7_1 = Yb_SelectTeamMenu(CC.MainSubMenuX, var_7_0)
+	local var_7_1 = Mercenary_SelectTeamMenu(CC.MainSubMenuX, var_7_0)
 	local var_7_2 = 0
 	local var_7_3 = 0
 
@@ -403,11 +403,11 @@ function Yb_Thing(arg_7_0)
 	return 1
 end
 
-function Yb_Thing2(arg_8_0)
+function Mercenary_UseThing_Type2(arg_8_0)
 	DrawStrBox(CC.MainSubMenuX, CC.MainSubMenuY, string.format("谁要修炼%s?", JY.Thing[arg_8_0].名称), C_WHITE, CC.DefaultFont)
 
 	local var_8_0 = CC.MainSubMenuY + CC.SingleLineHeight
-	local var_8_1 = Yb_SelectTeamMenu(CC.MainSubMenuX, var_8_0)
+	local var_8_1 = Mercenary_SelectTeamMenu(CC.MainSubMenuX, var_8_0)
 
 	if var_8_1 > 0 then
 		local var_8_2 = JY.Base["佣兵" .. var_8_1]
@@ -505,7 +505,7 @@ function Yb_Thing2(arg_8_0)
 	return 0
 end
 
-function Yb_Thing3(arg_9_0)
+function Mercenary_UseThing_Type3(arg_9_0)
 	local var_9_0 = -1
 
 	if JY.Status == GAME_MMAP or JY.Status == GAME_SMAP then
@@ -513,7 +513,7 @@ function Yb_Thing3(arg_9_0)
 		DrawStrBox(CC.MainSubMenuX, CC.MainSubMenuY, string.format("给谁分配%s?", JY.Thing[arg_9_0].名称), C_WHITE, CC.DefaultFont)
 
 		local var_9_1 = CC.MainSubMenuY + CC.SingleLineHeight
-		local var_9_2 = Yb_SelectTeamMenu(CC.MainSubMenuX, var_9_1)
+		local var_9_2 = Mercenary_SelectTeamMenu(CC.MainSubMenuX, var_9_1)
 
 		if var_9_2 > 0 then
 			var_9_0 = JY.Base["佣兵" .. var_9_2]
@@ -569,18 +569,18 @@ function Yb_Thing3(arg_9_0)
 	end
 end
 
-function Yb_UseThing(arg_10_0)
+function Mercenary_UseThing(arg_10_0)
 	if JY.ThingUseFunction[arg_10_0] == nil then
-		return Yb_DefaultUseThing(arg_10_0)
+		return Mercenary_DefaultUseThing(arg_10_0)
 	else
 		return JY.ThingUseFunction[arg_10_0](arg_10_0)
 	end
 end
 
-function Yb_SelectTeamMenu(arg_11_0, arg_11_1)
+function Mercenary_SelectTeamMenu(arg_11_0, arg_11_1)
 	local var_11_0 = {}
 
-	for iter_11_0 = 1, CC.YbNum do
+	for iter_11_0 = 1, CC.MercenaryNum do
 		var_11_0[iter_11_0] = {
 			"",
 			nil,
@@ -595,20 +595,20 @@ function Yb_SelectTeamMenu(arg_11_0, arg_11_1)
 		end
 	end
 
-	return ShowMenu(var_11_0, CC.YbNum, 0, arg_11_0 * 1.9, arg_11_1, 0, 0, 1, 1, CC.DefaultFont, C_ORANGE, C_WHITE)
+	return ShowMenu(var_11_0, CC.MercenaryNum, 0, arg_11_0 * 1.9, arg_11_1, 0, 0, 1, 1, CC.DefaultFont, C_ORANGE, C_WHITE)
 end
 
-function Yb_ShowPersonStatus(arg_12_0)
+function Mercenary_ShowPersonStatus(arg_12_0)
 	local var_12_0 = 1
 	local var_12_1 = 2
-	local var_12_2 = Yb_GetYbNum()
+	local var_12_2 = Mercenary_Count()
 
 	while true do
 		Cls()
 
 		local var_12_3 = JY.Base["佣兵" .. arg_12_0]
 
-		Yb_ShowPersonStatus_sub(var_12_3, var_12_0)
+		Mercenary_ShowPersonStatus_sub(var_12_3, var_12_0)
 		ShowScreen()
 
 		local var_12_4 = WaitKey()
@@ -638,7 +638,7 @@ function Yb_ShowPersonStatus(arg_12_0)
 	end
 end
 
-function Yb_ShowPersonStatus_sub(arg_13_0, arg_13_1)
+function Mercenary_ShowPersonStatus_sub(arg_13_0, arg_13_1)
 	local var_13_0 = CC.DefaultFont
 	local var_13_1 = JY.Person[arg_13_0]
 	local var_13_2 = JY.Person[0]
@@ -1020,16 +1020,16 @@ function Yb_ShowPersonStatus_sub(arg_13_0, arg_13_1)
 	end
 end
 
-function YbPerson(arg_16_0, arg_16_1)
+function Mercenary_ToggleWarEntry(arg_16_0, arg_16_1)
 	local var_16_0 = arg_16_0[arg_16_1][4]
 
-	if WAR.YbPerson[var_16_0] == 0 then
-		WAR.YbPerson[var_16_0] = 2
-	elseif WAR.YbPerson[var_16_0] == 2 then
-		WAR.YbPerson[var_16_0] = 0
+	if WAR.MercenaryJoin[var_16_0] == 0 then
+		WAR.MercenaryJoin[var_16_0] = 2
+	elseif WAR.MercenaryJoin[var_16_0] == 2 then
+		WAR.MercenaryJoin[var_16_0] = 0
 	end
 
-	if WAR.YbPerson[var_16_0] > 0 then
+	if WAR.MercenaryJoin[var_16_0] > 0 then
 		arg_16_0[arg_16_1][1] = "#" .. string.sub(arg_16_0[arg_16_1][1], 2)
 	else
 		arg_16_0[arg_16_1][1] = " " .. string.sub(arg_16_0[arg_16_1][1], 2)
@@ -1038,10 +1038,10 @@ function YbPerson(arg_16_0, arg_16_1)
 	return 0
 end
 
-function Yb_GetYbNum()
-	local var_17_0 = CC.YbNum
+function Mercenary_Count()
+	local var_17_0 = CC.MercenaryNum
 
-	for iter_17_0 = 1, CC.YbNum do
+	for iter_17_0 = 1, CC.MercenaryNum do
 		if JY.Base["佣兵" .. iter_17_0] < 0 then
 			var_17_0 = iter_17_0 - 1
 
@@ -1052,10 +1052,10 @@ function Yb_GetYbNum()
 	return var_17_0
 end
 
-function ybdw(arg_18_0)
+function Mercenary_InTeam(arg_18_0)
 	local var_18_0 = false
 
-	for iter_18_0 = 1, CC.YbNum do
+	for iter_18_0 = 1, CC.MercenaryNum do
 		if arg_18_0 == JY.Base["佣兵" .. iter_18_0] then
 			var_18_0 = true
 
@@ -1066,7 +1066,7 @@ function ybdw(arg_18_0)
 	return var_18_0
 end
 
-function ybjr(arg_19_0)
+function Mercenary_Join(arg_19_0)
 	if JY.Person[arg_19_0] == nil then
 		lib.Debug("instruct_10 error: person id not exist")
 
@@ -1075,7 +1075,7 @@ function ybjr(arg_19_0)
 
 	local var_19_0 = 0
 
-	for iter_19_0 = 1, CC.YbNum do
+	for iter_19_0 = 1, CC.MercenaryNum do
 		if JY.Base["佣兵" .. iter_19_0] < 0 then
 			JY.Base["佣兵" .. iter_19_0] = arg_19_0
 			var_19_0 = 1
@@ -1107,7 +1107,7 @@ function ybjr(arg_19_0)
 	end
 end
 
-function sjyb()
+function Mercenary_GenerateRandom()
 	local var_20_0 = {
 		"仲孙",
 		"赫连",
@@ -1935,9 +1935,9 @@ function sjyb()
 		JY.Person[var_20_7].武功等级1 = 999
 	end
 
-	if ybdw(594) and ybdw(595) and ybdw(596) then
+	if Mercenary_InTeam(594) and Mercenary_InTeam(595) and Mercenary_InTeam(596) then
 		QZXS("佣兵队伍已满，无法加入")
-	elseif ybdw(594) == false then
+	elseif Mercenary_InTeam(594) == false then
 		for iter_20_17 = 1, #PSX - 8 do
 			JY.Person[594][PSX[iter_20_17]] = JY.Person[var_20_7][PSX[iter_20_17]]
 		end
@@ -1956,9 +1956,9 @@ function sjyb()
 			end
 		end
 
-		ybjr(594)
+		Mercenary_Join(594)
 		QZXS("招募成功，佣兵【" .. JY.Person[594].姓名 .. "】加入")
-	elseif ybdw(595) == false then
+	elseif Mercenary_InTeam(595) == false then
 		for iter_20_18 = 1, #PSX - 8 do
 			JY.Person[595][PSX[iter_20_18]] = JY.Person[var_20_7][PSX[iter_20_18]]
 		end
@@ -1977,9 +1977,9 @@ function sjyb()
 			end
 		end
 
-		ybjr(595)
+		Mercenary_Join(595)
 		QZXS("招募成功，佣兵【" .. JY.Person[595].姓名 .. "】加入")
-	elseif ybdw(596) == false then
+	elseif Mercenary_InTeam(596) == false then
 		for iter_20_19 = 1, #PSX - 8 do
 			JY.Person[596][PSX[iter_20_19]] = JY.Person[var_20_7][PSX[iter_20_19]]
 		end
@@ -1998,7 +1998,7 @@ function sjyb()
 			end
 		end
 
-		ybjr(596)
+		Mercenary_Join(596)
 		QZXS("招募成功，佣兵【" .. JY.Person[596].姓名 .. "】加入")
 	end
 end
