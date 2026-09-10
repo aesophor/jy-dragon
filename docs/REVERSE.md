@@ -607,7 +607,7 @@ clip and then clear it with the degenerate rect:
       if JY.Status == GAME_START then
         lib.FillColor(0, 0, 0, 0, 0)             -- clear the clip region
 
-    function ClsN(x1, y1, x2, y2)                -- jymain.lua:9395
+    function ClsN(x1, y1, x2, y2)                -- jymain.lua:9363
       lib.SetClip(x1, y1, x2, y2)
       lib.FillColor(0, 0, 0, 0, 0)
       lib.SetClip(0, 0, 0, 0)

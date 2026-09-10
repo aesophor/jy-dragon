@@ -161,8 +161,8 @@ those tests.
 
 ## Save-list dates ran past the right border
 
-`jymain.lua:9903`, `9909` -- the two row formats in `SaveList`
-`jymain.lua:212`, `1960`, `1978` -- the matching header, three call sites
+`jymain.lua:9867`, `9873` -- the two row formats in `SaveList`
+`jymain.lua:212`, `1966`, `1984` -- the matching header, three call sites
 
 The 存档时间 column's seconds sat on top of the menu's right border, 17px
 outside it.
@@ -249,7 +249,7 @@ putting 门派 on its values.
 
 ### The stored date came back with a stray quote
 
-`jymain.lua:9898` -- strip the quotes when reading the date
+`jymain.lua:9862` -- strip the quotes when reading the date
 
 `SaveRecord` wraps the timestamp in single quotes on both sides before
 writing it (`4337`):
@@ -469,6 +469,68 @@ Dropping the row is the contained fix. Declaring `资质` would mean claiming a
 byte offset in the 342-byte person record, which changes the save layout and
 would need the offset proven unused first; and it would not be worth doing
 for a stat only the orphaned random-mercenary generator ever sets.
+
+## The HUD listed the whole party on every frame
+
+`jymain.lua:9319` -- the 随行护卫 panel is removed
+`jymain.lua:9337` -- the 宠物 panel and the 随从 row are removed
+
+`JYZTB` draws the HUD on every frame of both map loops (`1217`, `3836`). Three
+of its blocks were roster listings:
+
+| block | where | rows |
+|---|---|---|
+| 随行护卫 | x=720, top right | a header plus one row per hired mercenary: 姓名, 生命/生命最大值, 善使-武功1 |
+| 宠物 | x=20, left, 13 rows down | one row per 宠物 slot: 姓名, 生命/生命最大值, 毒性 |
+| 随从 | x=20, below the pets | 随从:麦小八 使马车时间减少2天, when `随从1` is 625 |
+
+The mercenary panel predates the 佣兵 entry in `MMenu`, which was unreachable
+in the shipped mod (see above) and is the natural place to read the same
+numbers. The two roster panels are also the only HUD elements that grow:
+three mercenaries push 90px down the right edge and four pets four rows down
+the left, on every frame.
+
+Between them the three blocks account for nine of the function's twenty-two
+`DrawString` calls. The row counters go with them -- `var_259_21` through
+`var_259_23` for the mercenaries, `var_259_27` through `var_259_35` for the
+pets and 随从 -- and nothing outside the blocks reads any of them.
+`var_259_20` and `var_259_26` stay, because the rows above each cut derive
+from them.
+
+The 随从 row was display only. `MyOEvent.lua:465` is what actually takes two
+days off a 马车 trip when `随从1` is 625, and that is untouched, as are the
+five other sites that read or set the field.
+
+Verified by calling `JYZTB()` under stubs with all three mercenary and all
+four pet slots filled and `随从1 = 625`, against both versions of the file.
+This is the only way to see the pet rows at all: no save file has a pet, all
+ten have `宠物1..4 = -1`, so they cannot be photographed.
+
+|  | HEAD | now |
+|---|---|---|
+| `DrawString` calls | 22 | 13 |
+| 随行护卫 header | 1 | 0 |
+| mercenary rows | 3 | 0 |
+| pet rows | 4 | 0 |
+| 麦小八 row | 1, at (20, 567) | 0 |
+
+Also checked by rendering slot 2, which is parked on the world map with all
+three mercenary slots filled, before and after, and diffing the frames. The
+differences fell in exactly two bands: y 31-115 at x 800-1219, the mercenary
+panel, and y 674-699, the clock, which ticks between runs regardless.
+Counting text-coloured pixels (`M_Silver` and `M_SandyBrown` are both bright;
+the map behind them is not) in x 828-1219, y 20-119 gives 5661 before and 33
+after.
+
+An earlier attempt to photograph the pet rows by forcing their conditions
+from `> 0` to `> -2` is not in that list: `JY.Base.宠物N` is `-1`, so the rows
+then read `JY.Person[-1]`, and the frame diverged across 56000 pixels rather
+than gaining four rows. It measured the wrong thing and was dropped.
+
+Deleting lines moved everything below in `jymain.lua`, so the references in
+this file and in REVERSE.md that pointed past the cuts were re-read out of the
+file rather than shifted arithmetically -- several were already stale, by 13
+lines in the `SaveList` case and 6 in the header case, from earlier edits.
 
 ## 令狐冲 rendered as 令狐衝
 

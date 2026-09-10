@@ -9316,26 +9316,8 @@ function JYZTB()
 
 	DrawString(15, 15 + var_259_20 * (CC.FontSmall2 + CC.RowPixel), "年龄:" .. 15 + JY.YEAR .. " 声望 " .. JY.Person[0].声望, M_SandyBrown, CC.FontSmall2)
 
-	local var_259_21 = JY.Base.佣兵1
-	local var_259_22 = JY.Base.佣兵2
-	local var_259_23 = JY.Base.佣兵3
-
-	if var_259_21 > 0 or var_259_22 > 0 or var_259_23 > 0 then
-		DrawString(720 + CC.FontSmall2 * 4 + 4, var_259_20 * (CC.FontSmall1 + CC.RowPixel), "随行护卫：", M_SandyBrown, CC.FontSmall2)
-	end
-
-	if var_259_21 > 0 then
-		DrawString(720 + CC.FontSmall2 * 4 + 4, 25 + var_259_20 * (CC.FontSmall1 + CC.RowPixel), JY.Person[var_259_21].姓名 .. " " .. JY.Person[var_259_21].生命 .. "/" .. JY.Person[var_259_21].生命最大值 .. "  善使-" .. JY.Wugong[JY.Person[var_259_21].武功1].名称, M_Silver, CC.FontSmall1)
-	end
-
-	if var_259_22 > 0 then
-		DrawString(720 + CC.FontSmall2 * 4 + 4, 45 + var_259_20 * (CC.FontSmall1 + CC.RowPixel), JY.Person[var_259_22].姓名 .. " " .. JY.Person[var_259_22].生命 .. "/" .. JY.Person[var_259_22].生命最大值 .. "  善使-" .. JY.Wugong[JY.Person[var_259_22].武功1].名称, M_Silver, CC.FontSmall1)
-	end
-
-	if var_259_23 > 0 then
-		DrawString(720 + CC.FontSmall2 * 4 + 4, 65 + var_259_20 * (CC.FontSmall1 + CC.RowPixel), JY.Person[var_259_23].姓名 .. " " .. JY.Person[var_259_23].生命 .. "/" .. JY.Person[var_259_23].生命最大值 .. "  善使-" .. JY.Wugong[JY.Person[var_259_23].武功1].名称, M_Silver, CC.FontSmall1)
-	end
-
+	-- [port] the 随行护卫 panel drawn here is gone; the 佣兵 entry
+	-- in MMenu shows the same thing on demand. See docs/PATCHES.md.
 	local var_259_24 = var_259_20 + 1
 
 	DrawString(15, 15 + var_259_24 * (CC.FontSmall2 + CC.RowPixel), "时间:天启" .. JY.YEAR .. "年" .. JY.MONTH .. "月" .. JY.DAY .. "日", Violet, CC.FontSmall2)
@@ -9352,39 +9334,8 @@ function JYZTB()
 	DrawString(CC.FontSmall2 * 3, 15 + var_259_26 * (CC.FontSmall2 + CC.RowPixel), var_259_2, Dark_Gold, CC.FontSmall2)
 	DrawString(50 + CC.FontSmall2 * 4 + 8, 15 + var_259_26 * (CC.FontSmall2 + CC.RowPixel), var_259_4, Dark_Gold, CC.FontSmall2)
 
-	local var_259_27 = var_259_26 + 13
-	local var_259_28 = JY.Base.宠物1
-
-	if var_259_28 > 0 then
-		DrawString(CC.FontSmall1 * 1, var_259_27 * (CC.FontSmall1 + CC.RowPixel), JY.Person[var_259_28].姓名 .. " " .. JY.Person[var_259_28].生命 .. "/" .. JY.Person[var_259_28].生命最大值 .. "  毒性：" .. JY.Person[var_259_28].攻击带毒, green1, CC.FontSmall1)
-	end
-
-	local var_259_29 = var_259_27 + 1
-	local var_259_30 = JY.Base.宠物2
-
-	if var_259_30 > 0 then
-		DrawString(CC.FontSmall1 * 1, var_259_29 * (CC.FontSmall1 + CC.RowPixel), JY.Person[var_259_30].姓名 .. " " .. JY.Person[var_259_30].生命 .. "/" .. JY.Person[var_259_30].生命最大值 .. "  毒性：" .. JY.Person[var_259_30].攻击带毒, green1, CC.FontSmall1)
-	end
-
-	local var_259_31 = var_259_29 + 1
-	local var_259_32 = JY.Base.宠物3
-
-	if var_259_32 > 0 then
-		DrawString(CC.FontSmall1 * 1, var_259_31 * (CC.FontSmall1 + CC.RowPixel), JY.Person[var_259_32].姓名 .. " " .. JY.Person[var_259_32].生命 .. "/" .. JY.Person[var_259_32].生命最大值 .. "  毒性：" .. JY.Person[var_259_32].攻击带毒, green1, CC.FontSmall1)
-	end
-
-	local var_259_33 = var_259_31 + 1
-	local var_259_34 = JY.Base.宠物4
-
-	if var_259_34 > 0 then
-		DrawString(CC.FontSmall1 * 1, var_259_33 * (CC.FontSmall1 + CC.RowPixel), JY.Person[var_259_34].姓名 .. " " .. JY.Person[var_259_34].生命 .. "/" .. JY.Person[var_259_34].生命最大值 .. "  毒性：" .. JY.Person[var_259_34].攻击带毒, green1, CC.FontSmall1)
-	end
-
-	local var_259_35 = var_259_33 + 1
-
-	if JY.Base.随从1 == 625 then
-		DrawString(CC.FontSmall1 * 1, var_259_35 * (CC.FontSmall1 + CC.RowPixel), "随从:麦小八 使马车时间减少2天", M_Silver, CC.FontSmall1)
-	end
+	-- [port] the 宠物 panel drawn here is gone, four rows of it, and with
+	-- it the 随从:麦小八 row below them. See docs/PATCHES.md.
 end
 
 function night()
