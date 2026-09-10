@@ -30,7 +30,11 @@ So a self-contained bundle is:
 
 `game/` is ~297 MB and is committed, so a clone has everything it needs to
 run -- see the licensing note under [.app bundle](#app-bundle) before you push
-it anywhere public. Only `build/` and `game/debug.log` are gitignored.
+it anywhere public. `build/`, `game/debug.log` and `game/save/` are
+gitignored; `save/` is per-player state, and the engine creates it at startup
+(`ensure_save_dir` in `main.c`) because nothing in the game does -- SaveRecord
+writes through `io.open` with no nil check, so the first save into a missing
+directory would abort the run.
 Note the directories are **lowercase** here,
 matching what `CONFIG.lua` actually asks for -- the original install relied on
 Windows and APFS being case-insensitive, so `DATA/` worked by luck. Lowercasing

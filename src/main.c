@@ -8,6 +8,8 @@
 #include "compat.lua.h"
 #include <mach-o/dyld.h>
 #include <limits.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 /* ---- logging ------------------------------------------------------------ */
 static FILE *g_logf;
@@ -99,6 +101,42 @@ static bool run_file(lua_State *L, const char *path) {
     return true;
 }
 
+/* Create the save directory if it is missing.
+ *
+ * jyconst.lua derives CC.SavePath as CONFIG.DataPath .. "../save/", and
+ * nothing in the game ever creates it. That was invisible while save/ was
+ * committed; it is not tracked any more, so a fresh clone starts without one.
+ *
+ * Loading survives a missing save/ -- SaveList guards on existFile, and the
+ * engine's own Byte.savefile and SaveSMap log and return false -- but SAVING
+ * does not: SaveRecord's two Lua-side writers, write_content and leijia, use
+ * plain io.open / io.input with no nil check, so the first save raises
+ * "attempt to index local 'f' (a nil value)" and unwinds the game.
+ *
+ * Derived from CONFIG.DataPath rather than hardcoded so a relocated data
+ * directory keeps its save/ beside it, matching what jyconst.lua computes.
+ */
+static void ensure_save_dir(lua_State *L) {
+    char path[1024];
+    bool have = false;
+
+    lua_getglobal(L, "CONFIG");
+    if (lua_istable(L, -1)) {
+        lua_getfield(L, -1, "DataPath");
+        const char *data = lua_tostring(L, -1);
+        if (data && *data) {
+            snprintf(path, sizeof path, "%s../save", data);
+            have = true;
+        }
+        lua_pop(L, 1);
+    }
+    lua_pop(L, 1);
+    if (!have) snprintf(path, sizeof path, "save");
+
+    if (mkdir(path, 0777) == 0) jy_log("created %s (no save directory yet)", path);
+    else if (errno != EEXIST) jy_log("cannot create %s: %s", path, strerror(errno));
+}
+
 int main(int argc, char **argv) {
     /* Root resolution: an explicit argument wins; otherwise use the current
      * directory if it holds CONFIG.lua, else the bundled ./game/. */
@@ -130,6 +168,8 @@ int main(int argc, char **argv) {
 
     /* CONFIG.lua is plain Lua and sets CurrentPath/DataPath/ScriptLuaPath. */
     if (!run_file(L, "CONFIG.lua")) return 1;
+
+    ensure_save_dir(L);
 
     /* CONFIG.Traditional = 1 renders Simplified text as Traditional. JY_TRAD
      * overrides it either way, for A/B checks without editing CONFIG.lua. */
