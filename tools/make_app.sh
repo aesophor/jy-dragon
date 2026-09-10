@@ -102,11 +102,15 @@ rsync -a --delete \
     --exclude 'save/' --exclude 'debug.log' \
     --exclude '.DS_Store' --exclude 'Thumbs.db' \
     "$GAME/" "$RES/game/"
-if [ ! -d "$RES/game/save" ]; then
+# save/ is not tracked, so a fresh clone has none to seed from. The engine
+# creates one at startup (ensure_save_dir), so an empty bundle is fine.
+if [ -d "$RES/game/save" ]; then
+    echo "  kept existing save/ in the bundle"
+elif [ -d "$GAME/save" ]; then
     cp -R "$GAME/save" "$RES/game/save"
     echo "  seeded save/ (delete it in the bundle to reset)"
 else
-    echo "  kept existing save/ in the bundle"
+    echo "  no save/ to seed; the game creates one on first launch"
 fi
 
 # ---- Info.plist -------------------------------------------------------------
