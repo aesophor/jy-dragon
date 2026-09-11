@@ -6574,7 +6574,16 @@ function say(arg_133_0, arg_133_1, arg_133_2)
 
 				local var_133_16, var_133_17 = lib.GetPNGXY(1, arg_133_1 * 2)
 				local var_133_18 = (var_133_0 - var_133_16) / 2
-				local var_133_19 = (var_133_1 - var_133_17) / 2
+				-- [port] the name plate was placed from the portrait's own
+				-- centring offset, heady + 2 + var_133_19 + 130 - CC.Fontsmall.
+				-- The heads are fitted to 100x100 (jymain.lua:126) inside a
+				-- 130 box, so var_133_19 is 15, and with CC.Fontsmall 28 that
+				-- put the name 7px below the 140x140 frame. Reserve a strip at
+				-- the bottom for it and centre the portrait in what is left.
+				local var_133_21 = arg_133_1 >= 0 and arg_133_1 < 190 or arg_133_1 > 579 and arg_133_1 < 635
+				local var_133_22 = var_133_21 and CC.Fontsmall + 2 or 0
+				local var_133_19 = math.max(0, (var_133_1 - var_133_22 - var_133_17) / 2)
+				local var_133_23 = var_133_11[arg_133_2].heady + var_133_7 - 5 - CC.Fontsmall
 
 				if arg_133_1 == 0 then
 					if JY.Person[JY.Base.畅想编号].头像代号 > 0 then
@@ -6586,11 +6595,11 @@ function say(arg_133_0, arg_133_1, arg_133_2)
 					lib.LoadPNG(1, arg_133_1 * 2, var_133_11[arg_133_2].headx + 5 + var_133_18, var_133_11[arg_133_2].heady + 5 + var_133_19, 1)
 				end
 
-				if arg_133_1 >= 0 and arg_133_1 < 190 or arg_133_1 > 579 and arg_133_1 < 635 then
+				if var_133_21 then
 					if arg_133_1 == 0 then
-						DrawString(var_133_11[arg_133_2].headx + 5 + var_133_18, var_133_11[arg_133_2].heady + 2 + var_133_19 + var_133_0 - CC.Fontsmall, JY.Person[0].姓名, C_GOLD, CC.Fontsmall)
+						DrawString(var_133_11[arg_133_2].headx + 5 + var_133_18, var_133_23, JY.Person[0].姓名, C_GOLD, CC.Fontsmall)
 					else
-						DrawString(var_133_11[arg_133_2].headx + 5 + var_133_18, var_133_11[arg_133_2].heady + 2 + var_133_19 + var_133_0 - CC.Fontsmall, JY.Person[arg_133_1].姓名, C_GOLD, CC.Fontsmall)
+						DrawString(var_133_11[arg_133_2].headx + 5 + var_133_18, var_133_23, JY.Person[arg_133_1].姓名, C_GOLD, CC.Fontsmall)
 					end
 				end
 

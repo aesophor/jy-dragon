@@ -161,7 +161,7 @@ those tests.
 
 ## Save-list dates ran past the right border
 
-`jymain.lua:9884`, `9890` -- the two row formats in `SaveList`
+`jymain.lua:9893`, `9899` -- the two row formats in `SaveList`
 `jymain.lua:212`, `1966`, `1984` -- the matching header, three call sites
 
 The 存档时间 column's seconds sat on top of the menu's right border, 17px
@@ -249,7 +249,7 @@ putting 门派 on its values.
 
 ### The stored date came back with a stray quote
 
-`jymain.lua:9879` -- strip the quotes when reading the date
+`jymain.lua:9888` -- strip the quotes when reading the date
 
 `SaveRecord` wraps the timestamp in single quotes on both sides before
 writing it (`4337`):
@@ -268,7 +268,7 @@ space to stay at 79 bytes and keep the two borders where they are (measured
 unchanged at 31.0..1185.5 against 31.0..1186.5).
 
 `instruct_15` draws a seventh, narrower variant of this header
-(`jymain.lua:7119`, `"%-6s %-10s %-2s %6s %12s %-6s %-10s"`) over the same
+(`jymain.lua:7128`, `"%-6s %-10s %-2s %6s %12s %-6s %-10s"`) over the same
 `SaveList` rows, with its box x computed from 25 rather than 38.5 font
 widths. It is mismatched independently of this and is left alone.
 
@@ -510,8 +510,8 @@ for a stat only the orphaned random-mercenary generator ever sets.
 
 ## The HUD listed the whole party on every frame
 
-`jymain.lua:9336` -- the 随行护卫 panel is removed
-`jymain.lua:9354` -- the 宠物 panel and the 随从 row are removed
+`jymain.lua:9345` -- the 随行护卫 panel is removed
+`jymain.lua:9363` -- the 宠物 panel and the 随从 row are removed
 
 `JYZTB` draws the HUD on every frame of both map loops (`1217`, `3836`). Three
 of its blocks were roster listings:
@@ -638,6 +638,48 @@ alone. `JY_TEST_TRAD=1 ./build/jyengine` from `game/` gives
 
     鮮于通 于人豪 令狐沖 不齒於人 終於 由於人類
 
+## The speaker's name hung out of the portrait frame
+
+`jymain.lua:6577` -- `say()` reserves a strip for the name
+`src/main.c` -- new `JY_TEST_SAY` hook
+
+`say()` draws a 140x140 frame, the portrait inside it, and the speaker's
+name in gold across the bottom. The name was placed at
+
+    heady + 2 + var_133_19 + var_133_0 - CC.Fontsmall
+
+where `var_133_19` is the portrait's own vertical centring offset, half the
+slack between the head and the 130-wide inner box. That term does not belong
+in a distance measured from the top of the box: the heads are fitted to
+100x100 (`jymain.lua:126` registers slot 1 with `limitX(CC.ScreenW / 800 *
+100, 0, 100)`) while the layout reserves 130, so `var_133_19` is 15, and with
+`CC.Fontsmall` 28 the name landed 7px past the bottom border.
+
+The name now gets a strip of its own at the bottom of the box, and the
+portrait is centred in what is left above it. The strip is only reserved when
+a name is actually drawn -- the condition (`arg_133_1 < 190`, or 580..634) is
+hoisted so both the portrait and the plate see it -- so a speaker with no name
+keeps the portrait centred in the full box exactly as before.
+
+`TalkEx` was checked and left alone. It draws the same frame but places its
+name from a constant, `heady + 5 + 130 - 20` at font 20, which ends 5px inside
+the border. It is also the rare path: `say(` appears 19149 times in
+`game/script/`, `say2`/`say3`/`TalkEx` 38 between them.
+
+Measured, not eyeballed. `JY_TEST_SAY=<person id>` stubs `WaitKey` to
+snapshot instead of block, which catches the frame at the point `say()`
+considers it finished, and the C_GOLD glyph rows were counted out of the BMP
+by colour ratio:
+
+| | name glyph rows | portrait rows | frame |
+|---|---|---|---|
+| before | 271..296 | 172..268 | border at y=290 |
+| after | 259..284 | 157..254 | border at y=290 |
+
+Person 169 玄苦大師, one of the longest names the branch can draw at four
+characters. Person 200, whose name is not drawn, keeps portrait rows
+172..268 either way, which is the control for the hoisted condition.
+
 ## Effect sprites left their tops behind
 
 `src/lib.c` -- `SaveSur` takes corners, not a size
@@ -649,7 +691,7 @@ faults, found by tracing every `SaveSur`, `LoadSur` and effect blit through a
 real fight -- forcing `WAR.AutoFight` on and feeding only arrow keys, since
 Return cancels auto-battle (`17736`).
 
-**`SaveSur(x1, y1, x2, y2)` was read as `(x, y, w, h)`.** `jymain.lua:8845`
+**`SaveSur(x1, y1, x2, y2)` was read as `(x, y, w, h)`.** `jymain.lua:8854`
 settles the convention: a centred dialogue box of width w saves
 
     lib.SaveSur((CC.ScreenW - w) / 2 - 4, ...,

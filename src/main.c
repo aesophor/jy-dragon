@@ -586,6 +586,26 @@ int main(int argc, char **argv) {
 
     /* JY_TEST_TALK=<n> renders one dialogue record and dumps its bytes, so the
      * text pipeline can be checked without navigating to an NPC in-game. */
+    /* JY_TEST_SAY=<person id> draws say()'s portrait frame for that person,
+     * so the name plate can be measured against the box it sits in. WaitKey
+     * is stubbed to snapshot instead of blocking, which catches the frame at
+     * the point say() considers it finished. */
+    if (getenv("JY_TEST_SAY")) {
+        static const char *S =
+            "IncludeFile() SetGlobalConst() SetGlobal()\n"
+            "LoadRecord(0)\n"
+            "lib.LoadPNGPath(CC.HeadPath, 1, CC.HeadNum,"
+            " limitX(CC.ScreenW / 800 * 100, 0, 100))\n"
+            "local n = tonumber(os.getenv('JY_TEST_SAY'))\n"
+            "local w, h = lib.GetPNGXY(1, n * 2)\n"
+            "lib.Debug(string.format('say box 140x140 at (2,150)  head %d fitted to %dx%d  CC.Fontsmall=%d  name strip y=%d..%d', n, w, h, CC.Fontsmall, 150 + 140 - 5 - CC.Fontsmall, 150 + 140 - 5))\n"
+            "WaitKey = function() SNAP('say') end\n"
+            "say('\xe6\xb8\xac\xe8\xa9\xa6', n, 0)\n";
+        if (luaL_loadstring(L, S) || lua_pcall(L, 0, 0, 0))
+            jy_log("say test failed: %s", lua_tostring(L, -1));
+        goto done;
+    }
+
     if (getenv("JY_TEST_TALK")) {
         static const char *T =
             "IncludeFile() SetGlobalConst() SetGlobal()\n"

@@ -607,7 +607,7 @@ clip and then clear it with the degenerate rect:
       if JY.Status == GAME_START then
         lib.FillColor(0, 0, 0, 0, 0)             -- clear the clip region
 
-    function ClsN(x1, y1, x2, y2)                -- jymain.lua:9380
+    function ClsN(x1, y1, x2, y2)                -- jymain.lua:9389
       lib.SetClip(x1, y1, x2, y2)
       lib.FillColor(0, 0, 0, 0, 0)
       lib.SetClip(0, 0, 0, 0)
@@ -659,7 +659,7 @@ and the engine loads and loops it -- checked by pointing `JY_TEST_MUSIC`'s
 fixed `game11.mp3` at it through a directory of symlinks. Id 0 is an ordinary
 track, and it is reachable three ways: the six scenes whose `进门音乐` is 0
 (靈鷲宮, 峨嵋派, 崆峒派, 青城派, 梅莊, 西夏), the 52 whose `出门音乐` is 0,
-which `Init_MMap` plays on the world map (`jymain.lua:9224`), and this line,
+which `Init_MMap` plays on the world map (`jymain.lua:9233`), and this line,
 after a battle in any of the 26 scenes whose `进门音乐` is negative.
 
 One deliberate deviation: on a failed open this port *clears* its record of
