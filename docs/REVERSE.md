@@ -651,8 +651,16 @@ Point 2 is load-bearing for battle endings. `jywar.lua` does:
 
 so the fanfare is *meant* to play over nothing, and the scene music is
 restored a few lines later. Decoding the new track before stopping the old one
-makes the fanfare play on top of the previous BGM instead. `PlayMIDI(0)` at
-`jywar.lua:18955` is the same trick -- `game00.mp3` does not exist either.
+makes the fanfare play on top of the previous BGM instead.
+
+The `PlayMIDI(0)` on the other arm of that restore (`jywar.lua:18955`) was
+described here as the same trick. It is not: `sound/game00.mp3` ships, 70.9s,
+and the engine loads and loops it -- checked by pointing `JY_TEST_MUSIC`'s
+fixed `game11.mp3` at it through a directory of symlinks. Id 0 is an ordinary
+track, and it is reachable three ways: the six scenes whose `进门音乐` is 0
+(靈鷲宮, 峨嵋派, 崆峒派, 青城派, 梅莊, 西夏), the 52 whose `出门音乐` is 0,
+which `Init_MMap` plays on the world map (`jymain.lua:9224`), and this line,
+after a battle in any of the 26 scenes whose `进门音乐` is negative.
 
 One deliberate deviation: on a failed open this port *clears* its record of
 what is playing, where the original leaves the old path in place. The
