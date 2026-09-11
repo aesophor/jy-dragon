@@ -337,7 +337,7 @@ CJK text, and every bit of it assumes two bytes per wide character:
 
 | site | what it does |
 |---|---|
-| `jymain.lua:6404` | `GenTalkString` steps 2 bytes per wide char to wrap talk text, and budgets each line as `2 * columns - 1` bytes |
+| `jymain.lua:6425` | `GenTalkString` steps 2 bytes per wide char to wrap talk text, and budgets each line as `2 * columns - 1` bytes |
 | `jywar.lua:22041` | `string.sub(s, n*2 - 1, n*2)` slices out the n-th character |
 | `jymain.lua:3624` | `string.len(s) / 2 * font` is how pixel widths are computed -- about thirty sites do this, in `/2` and `/4` variants |
 | `MyOEvent.lua:9491` | `string.byte(s, -1) > 127` tests for a trailing wide char |
@@ -601,13 +601,13 @@ otherwise it builds `{x1, y1, x2-x1, y2-y1}`.
 Both of the scripts' screen-clearing helpers depend on that case -- they set a
 clip and then clear it with the degenerate rect:
 
-    function Cls(x1, y1, x2, y2)                 -- jymain.lua:6365
+    function Cls(x1, y1, x2, y2)                 -- jymain.lua:6399
       ...
       lib.SetClip(x1, y1, x2, y2)
       if JY.Status == GAME_START then
         lib.FillColor(0, 0, 0, 0, 0)             -- clear the clip region
 
-    function ClsN(x1, y1, x2, y2)                -- jymain.lua:9363
+    function ClsN(x1, y1, x2, y2)                -- jymain.lua:9380
       lib.SetClip(x1, y1, x2, y2)
       lib.FillColor(0, 0, 0, 0, 0)
       lib.SetClip(0, 0, 0, 0)

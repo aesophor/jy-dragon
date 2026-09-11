@@ -161,7 +161,7 @@ those tests.
 
 ## Save-list dates ran past the right border
 
-`jymain.lua:9867`, `9873` -- the two row formats in `SaveList`
+`jymain.lua:9884`, `9890` -- the two row formats in `SaveList`
 `jymain.lua:212`, `1966`, `1984` -- the matching header, three call sites
 
 The 存档时间 column's seconds sat on top of the menu's right border, 17px
@@ -249,7 +249,7 @@ putting 门派 on its values.
 
 ### The stored date came back with a stray quote
 
-`jymain.lua:9862` -- strip the quotes when reading the date
+`jymain.lua:9879` -- strip the quotes when reading the date
 
 `SaveRecord` wraps the timestamp in single quotes on both sides before
 writing it (`4337`):
@@ -268,7 +268,7 @@ space to stay at 79 bytes and keep the two borders where they are (measured
 unchanged at 31.0..1185.5 against 31.0..1186.5).
 
 `instruct_15` draws a seventh, narrower variant of this header
-(`jymain.lua:7089`, `"%-6s %-10s %-2s %6s %12s %-6s %-10s"`) over the same
+(`jymain.lua:7119`, `"%-6s %-10s %-2s %6s %12s %-6s %-10s"`) over the same
 `SaveList` rows, with its box x computed from 25 rather than 38.5 font
 widths. It is mismatched independently of this and is left alone.
 
@@ -488,8 +488,8 @@ for a stat only the orphaned random-mercenary generator ever sets.
 
 ## The HUD listed the whole party on every frame
 
-`jymain.lua:9319` -- the 随行护卫 panel is removed
-`jymain.lua:9337` -- the 宠物 panel and the 随从 row are removed
+`jymain.lua:9336` -- the 随行护卫 panel is removed
+`jymain.lua:9354` -- the 宠物 panel and the 随从 row are removed
 
 `JYZTB` draws the HUD on every frame of both map loops (`1217`, `3836`). Three
 of its blocks were roster listings:
@@ -592,7 +592,7 @@ faults, found by tracing every `SaveSur`, `LoadSur` and effect blit through a
 real fight -- forcing `WAR.AutoFight` on and feeding only arrow keys, since
 Return cancels auto-battle (`17736`).
 
-**`SaveSur(x1, y1, x2, y2)` was read as `(x, y, w, h)`.** `jymain.lua:8840`
+**`SaveSur(x1, y1, x2, y2)` was read as `(x, y, w, h)`.** `jymain.lua:8845`
 settles the convention: a centred dialogue box of width w saves
 
     lib.SaveSur((CC.ScreenW - w) / 2 - 4, ...,
@@ -653,6 +653,29 @@ at the 绝世天罡 site was `DATA/dz/4.png`. Between them the twelve sites
 reached indices 0 through 7 -- `DATA/dz/8.png` was already dead art --
 and nothing else in the scripts touches slot 91, so the whole directory
 is unreferenced now. It stays on disk; it ships with the mod.
+
+## The console filled with `[lua] 0` after a battle
+
+`jymain.lua:6310` -- the event-dispatch trace is behind `JY_DEBUG` now
+
+`oldEventExecute` logged the event id of every dispatch, and a dispatch
+carrying id 0 means "this tile has a D record but no event on it". That
+alone would be quiet, except the walk loop re-arms itself: at `3872` it
+sets `JY.OldDPass = -1` every frame the player stands on a tile whose
+layer-3 index is >= 0, so the `var_56_0 ~= JY.OldDPass` guard at `3860`
+passes again on the next frame and the dispatch repeats for as long as
+you stand still.
+
+That is why it showed up after a fight. Battles are usually started by
+an event tile, and a one-shot event zeroes its own id when it fires, so
+the tile you are returned to now dispatches 0 at frame rate until you
+step off it.
+
+The re-arming is the original game's behaviour and events rely on it, so
+only the trace changed: it is wrapped in `if CC.DebugMenu then`, the same
+switch `JY_DEBUG=1` already sets for the 传送 menu entry. Running with
+`JY_DEBUG` set still prints every id, which is what you want when you are
+wiring up a scene.
 
 ## Debug aids for editing scenes and events
 

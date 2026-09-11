@@ -6307,7 +6307,12 @@ function oldEventExecute(arg_123_0)
 		var_123_0 = GetD(JY.SubScene, JY.CurrentD, 4)
 	end
 
-	lib.Debug(var_123_0 .. "")
+	-- [port] this traced every event dispatch, including the 0 that means
+	-- "no event here"; the walk loop re-dispatches every frame while you
+	-- stand on a D tile, so it filled the console. Kept behind JY_DEBUG.
+	if CC.DebugMenu then
+		lib.Debug(var_123_0 .. "")
+	end
 
 	if var_123_0 > 0 then
 		if CallCEvent(var_123_0) then
