@@ -229,7 +229,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/OEvent6001.lu
 diff -ru --label pristine --label ported ../_re/script_source_utf8/jyconst.lua game/script/jyconst.lua
 --- pristine
 +++ ported
-@@ -203,6 +203,15 @@
+@@ -203,6 +203,21 @@
  	CC.OGGFile = CONFIG.SoundPath .. "game%02d.ogg"
  	CC.ATKFile = CONFIG.SoundPath .. "atk%02d.wav"
  	CC.EFile = CONFIG.SoundPath .. "e%02d.wav"
@@ -242,10 +242,16 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jyconst.lua g
 +	while existFile(string.format(CC.BattleMusicFile, CC.BattleMusicNum + 1)) do
 +		CC.BattleMusicNum = CC.BattleMusicNum + 1
 +	end
++	-- [port] war maps that pin their own track instead of drawing a
++	-- random one: WAR.Data.地图 -> the N in battle<N>.mp3. An entry
++	-- naming a track that is not installed falls back to random.
++	CC.BattleMusicByMap = {
++		[65] = 3
++	}
  	CC.WarFile = CONFIG.DataPath .. "war.sta"
  	CC.WarMapFile = {
  		CONFIG.DataPath .. "warfld.idx",
-@@ -216,7 +225,7 @@
+@@ -216,7 +231,7 @@
  	CC.CircleNum = 1
  	CC.dengdai = 1
  	CC.TeamNum = 6
@@ -254,7 +260,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jyconst.lua g
  	CC.MyThingNum = 400
  	CC.Base_S = {}
  	CC.Base_S.乘船 = {
-@@ -378,7 +387,7 @@
+@@ -378,7 +393,7 @@
  		}
  	end
  
@@ -263,7 +269,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jyconst.lua g
  		CC.Base_S["佣兵" .. iter_1_1] = {
  			72 + 2 * (iter_1_1 - 1),
  			0,
-@@ -1779,6 +1788,15 @@
+@@ -1779,6 +1794,15 @@
  	CC.PersonMoveFrame = CC.Frame * 2
  	CC.AnimationFrame = CC.Frame * 3
  	CC.WarAutoDelay = 300
@@ -279,7 +285,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jyconst.lua g
  	CC.DirectX = {
  		0,
  		1,
-@@ -2758,7 +2776,7 @@
+@@ -2758,7 +2782,7 @@
  
  	CC.ThingGapOut = 10
  	CC.ThingGapIn = 10
@@ -1321,7 +1327,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  						local var_76_38 = WAR.Person[WAR.CurID].坐标X
  						local var_76_39 = WAR.Person[WAR.CurID].坐标Y
  						local var_76_40 = var_76_7[iter_76_30][1] - var_76_38
-@@ -17182,6 +17221,17 @@
+@@ -17182,6 +17221,23 @@
  		return false
  	end
  
@@ -1333,13 +1339,19 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
 +	-- restore at the end of this function. No tracks present: no-op, and
 +	-- the scene keeps playing.
 +	if CC.BattleMusicNum > 0 then
-+		PlayMIDI(CC.BattleMusicBase + math.random(CC.BattleMusicNum) - 1)
++		local var_78_track = CC.BattleMusicByMap[WAR.Data.地图]
++
++		if var_78_track == nil or var_78_track > CC.BattleMusicNum then
++			var_78_track = math.random(CC.BattleMusicNum)
++		end
++
++		PlayMIDI(CC.BattleMusicBase + var_78_track - 1)
 +	end
 +
  	CleanMemory()
  	lib.PicInit()
  	lib.ShowSlow(20, 1)
-@@ -17628,7 +17678,7 @@
+@@ -17628,7 +17684,7 @@
  	for iter_78_26 = 0, WAR.PersonNum - 1 do
  		local var_78_18 = WAR.Person[iter_78_26].人物编号
  
@@ -1348,7 +1360,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  			if JY.Base.游戏难度 == 1 then
  				WAR.ZYZ[var_78_18] = 100
  			elseif JY.Base.游戏难度 == 2 then
-@@ -17642,7 +17692,7 @@
+@@ -17642,7 +17698,7 @@
  			end
  		end
  
@@ -1357,7 +1369,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  			WAR.ZYZ[var_78_18] = 100
  		end
  
-@@ -18172,7 +18222,7 @@
+@@ -18172,7 +18228,7 @@
  						end
  					end
  
@@ -1366,7 +1378,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  						for iter_78_36 = 0, WAR.PersonNum - 1 do
  							if WAR.Person[iter_78_36].人物编号 == 68 and WAR.Person[iter_78_36].死亡 == false then
  								WAR.ZYZ[var_78_25] = WAR.ZYZ[var_78_25] - 10
-@@ -18647,9 +18697,10 @@
+@@ -18647,9 +18703,10 @@
  							if WAR.HTSS == 0 and JY.Base.二次觉醒 == 1 and JLSD(25, 50 + var_78_73, 0) then
  								CurIDTXDH(WAR.CurID, 91, 0)
  								Cls()
@@ -1379,7 +1391,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  
  								for iter_78_50 = 12, 24 do
  									NewDrawString(-1, -1, ZJTF[7] .. TFSSJ[7], C_GOLD, 25 + iter_78_50)
-@@ -20580,7 +20631,12 @@
+@@ -20580,7 +20637,12 @@
  			if iter_122_6 == 1 and WAR.Person[WAR.CurID].特效动画 ~= -1 then
  				local var_122_32 = WAR.Person[WAR.CurID].特效动画
  				local var_122_33 = 0
@@ -1393,7 +1405,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  
  				for iter_122_7 = 1, CC.Effect[var_122_32] do
  					lib.PicLoadCache(WAR.EFT[var_122_32], (var_122_33 + iter_122_7) * 2, CC.ScreenW / 2, CC.ScreenH / 2 - var_122_22, 2, 192)
-@@ -20599,11 +20655,10 @@
+@@ -20599,11 +20661,10 @@
  
  					ShowScreen()
  
@@ -1408,7 +1420,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  				end
  
  				lib.FreeSur(var_122_34)
-@@ -20890,13 +20945,16 @@
+@@ -20890,13 +20951,16 @@
  
  		if var_122_64 then
  			lib.ShowSurface(0)
@@ -1428,7 +1440,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  	end
  
  	lib.FreeSur(var_122_63)
-@@ -22493,7 +22551,7 @@
+@@ -22493,7 +22557,7 @@
  		arg_134_0 = arg_134_0 + 40
  	end
  
@@ -1437,7 +1449,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  		for iter_134_2 = 1, #TeamP do
  			if TeamP[iter_134_2] == arg_134_1 then
  				local var_134_1 = math.modf(JY.Person[arg_134_1].实战 / 25 + 1)
-@@ -22629,7 +22687,7 @@
+@@ -22629,7 +22693,7 @@
  	local var_139_3 = 0
  	local var_139_4 = 0
  

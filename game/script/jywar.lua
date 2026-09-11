@@ -17229,7 +17229,13 @@ function WarMain(arg_78_0, arg_78_1, arg_78_2, arg_78_3)
 	-- restore at the end of this function. No tracks present: no-op, and
 	-- the scene keeps playing.
 	if CC.BattleMusicNum > 0 then
-		PlayMIDI(CC.BattleMusicBase + math.random(CC.BattleMusicNum) - 1)
+		local var_78_track = CC.BattleMusicByMap[WAR.Data.地图]
+
+		if var_78_track == nil or var_78_track > CC.BattleMusicNum then
+			var_78_track = math.random(CC.BattleMusicNum)
+		end
+
+		PlayMIDI(CC.BattleMusicBase + var_78_track - 1)
 	end
 
 	CleanMemory()

@@ -212,6 +212,12 @@ function SetGlobalConst()
 	while existFile(string.format(CC.BattleMusicFile, CC.BattleMusicNum + 1)) do
 		CC.BattleMusicNum = CC.BattleMusicNum + 1
 	end
+	-- [port] war maps that pin their own track instead of drawing a
+	-- random one: WAR.Data.地图 -> the N in battle<N>.mp3. An entry
+	-- naming a track that is not installed falls back to random.
+	CC.BattleMusicByMap = {
+		[65] = 3
+	}
 	CC.WarFile = CONFIG.DataPath .. "war.sta"
 	CC.WarMapFile = {
 		CONFIG.DataPath .. "warfld.idx",

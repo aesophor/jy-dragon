@@ -338,7 +338,7 @@ CJK text, and every bit of it assumes two bytes per wide character:
 | site | what it does |
 |---|---|
 | `jymain.lua:6425` | `GenTalkString` steps 2 bytes per wide char to wrap talk text, and budgets each line as `2 * columns - 1` bytes |
-| `jywar.lua:22041` | `string.sub(s, n*2 - 1, n*2)` slices out the n-th character |
+| `jywar.lua:22064` | `string.sub(s, n*2 - 1, n*2)` slices out the n-th character |
 | `jymain.lua:3624` | `string.len(s) / 2 * font` is how pixel widths are computed -- about thirty sites do this, in `/2` and `/4` variants |
 | `MyOEvent.lua:9491` | `string.byte(s, -1) > 127` tests for a trailing wide char |
 
@@ -461,7 +461,7 @@ Two details worth knowing:
 One data quirk that is **not** a port bug: the marker mask is record 0 of
 whatever archive is in pic slot 0, and `smap.grp`'s record 0 carries hotspot
 `(0,0)` where every other tile uses `(18,17)`. Battles load `wmap.grp`
-(record 0 correct), but the outdoor variant at `jywar.lua:18903` loads `smap`,
+(record 0 correct), but the outdoor variant at `jywar.lua:18960` loads `smap`,
 where the original misplaces its markers too.
 
 ### `Byte`'s numeric arguments (recovered, verified)
@@ -652,7 +652,7 @@ Point 2 is load-bearing for battle endings. `jywar.lua` does:
 so the fanfare is *meant* to play over nothing, and the scene music is
 restored a few lines later. Decoding the new track before stopping the old one
 makes the fanfare play on top of the previous BGM instead. `PlayMIDI(0)` at
-`jywar.lua:18898` is the same trick -- `game00.mp3` does not exist either.
+`jywar.lua:18955` is the same trick -- `game00.mp3` does not exist either.
 
 One deliberate deviation: on a failed open this port *clears* its record of
 what is playing, where the original leaves the old path in place. The

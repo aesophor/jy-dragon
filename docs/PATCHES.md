@@ -61,18 +61,18 @@ names again, and both have to be redone before the diff means anything.
 
 ## Battle effect text stayed on screen for one frame
 
-`jyconst.lua:1792` -- new `CC.EffectTextMS`, default 40
-`jywar.lua:20642` -- was an empty `if CONFIG.Operation == 0 then end` block
-`jywar.lua:20934` -- was `lib.Delay(1)`
+`jyconst.lua:1798` -- new `CC.EffectTextMS`, default 40
+`jywar.lua:20664` -- was an empty `if CONFIG.Operation == 0 then end` block
+`jywar.lua:20957` -- was `lib.Delay(1)`
 
 `War_ShowFight` redraws a skill's effect text (击中破绽, 葵花移形, ...) once per
-frame for a fixed 20 frames (`jywar.lua:20875`). Two branches present those
+frame for a fixed 20 frames (`jywar.lua:20898`). Two branches present those
 frames, and only one of them is paced:
 
 | branch | original pacing |
 |---|---|
-| skill has an effect animation | `lib.Delay(2 * CC.Frame)`, 60ms (`20893`) |
-| skill has only text | `lib.Delay(1)` (`20897`) |
+| skill has an effect animation | `lib.Delay(2 * CC.Frame)`, 60ms (`20954`) |
+| skill has only text | `lib.Delay(1)` (`20957`) |
 
 A third site, the effect-animation loop inside the attack frames, presented
 with no delay at all -- its one candidate slot was an empty
@@ -89,7 +89,7 @@ Only the unpaced branches were touched. The animated branch keeps its own
 
 ## The title menu hung past the bottom of the artwork
 
-`jyconst.lua:2763` -- the `3` in `StartMenuY` became `5`
+`jyconst.lua:2785` -- the `3` in `StartMenuY` became `5`
 
 The original anchors the menu to the window:
 
@@ -275,15 +275,16 @@ widths. It is mismatched independently of this and is left alone.
 ## Battle background music
 
 `jyconst.lua:208` -- `CC.BattleMusicFile`, `CC.BattleMusicBase`, `CC.BattleMusicNum`
-`jymain.lua:4876` -- `PlayMIDI` addresses the battle range
-`jywar.lua:17214` -- pick one on entering a battle
+`jymain.lua:4888` -- `PlayMIDI` addresses the battle range
+`jywar.lua:17224` -- pick one on entering a battle
+`jyconst.lua:218` -- `CC.BattleMusicByMap`, the per-war-map overrides
 
 The mod has no battle music. `WarMain` -- the single entry point every battle
 in the game routes through -- never touches the music, so combat inherits
 whatever the scene or world map was playing. The schema has a per-battle
-`CC.WarData_S.音乐` field (`jyconst.lua:2681`) that no script ever reads, and
+`CC.WarData_S.音乐` field (`jyconst.lua:2694`) that no script ever reads, and
 the only battle-specific track is the victory fanfare `PlayMIDI(100)`
-(`jywar.lua:18869`, `18880`), whose `game100.mp3` does not ship.
+(`jywar.lua:18887`, `18898`), whose `game100.mp3` does not ship.
 
 New tracks go in `sound/battle<N>.mp3`, and the count is probed at startup
 rather than hardcoded, so adding a track needs no code change:
@@ -300,21 +301,42 @@ shipped track is 2002) are mapped to the battle pattern inside `PlayMIDI`
 itself. That keeps `JY.CurrentMIDI` accurate, which is what two other things
 depend on:
 
-- `Menu_SetMusic` (`1717`) replays `JY.CurrentMIDI` when you toggle music
+- `Menu_SetMusic` (`1729`) replays `JY.CurrentMIDI` when you toggle music
   back on, so it resumes the battle track rather than the scene's;
 - `WarMain`'s tail already restores `JY.Scene[JY.SubScene].进门音乐`, or
-  `PlayMIDI(0)`, on every exit (`18895`), so nothing is needed to end it.
+  `PlayMIDI(0)`, on every exit (`18952`), so nothing is needed to end it.
 
 Where the call sits in `WarMain` matters twice over. It goes after
 `WarSelectTeam` and `WarSelectEnemy`, so the track starts once the "who
 fights" and "bring your 佣兵?" prompts are done rather than underneath them.
-And it goes after the `JY.Restart` check (`17182`), because that path
+And it goes after the `JY.Restart` check (`17220`), because that path
 `return false`s straight out of `WarMain` and never reaches the restore at
 the end -- starting the music above it would leave a battle track playing
 over the scene with nothing to stop it.
 
 Guarded on `CC.BattleMusicNum > 0`, so a `sound/` with no battle tracks
 behaves exactly as the mod always did.
+
+### Pinning a track to one war map
+
+A battle that wants a fixed track names it in `CC.BattleMusicByMap`, keyed
+by war map id -- `WAR.Data.地图`, the field `WarLoadMap` is handed a line
+later -- and valued with the N in `battle<N>.mp3`:
+
+    CC.BattleMusicByMap = {
+        [65] = 3
+    }
+
+War map 65 is the 无名古墓 interior. `war.sta` has two battles on it,
+441 梅超風 and 442 古墓盗贼, so both now open on `battle3.mp3` instead of
+drawing from the pool. An id with no entry draws at random exactly as
+before, and an entry naming a track that is not installed falls back to
+random rather than asking `PlayMIDI` for a missing file.
+
+The per-battle `CC.WarData_S.音乐` field would be the natural place for
+this -- both records carry `6` there -- but nothing in the engine or the
+scripts reads it, and the values are original-game MIDI ids that have no
+relation to `battle<N>.mp3`, so they are no use as they stand.
 
 Verified by probing `PlayMIDI` at startup: id 9002 resolved to
 `./sound/battle2.mp3` (83.0s, looping) and 9003 to `battle3.mp3`, with
@@ -584,8 +606,8 @@ occurrence, 令*狐冲, leaves 狐冲 contiguous and the rule catches it.)
 ## Effect sprites left their tops behind
 
 `src/lib.c` -- `SaveSur` takes corners, not a size
-`jywar.lua:20622`, `20649` -- the caster's effect saves the screen
-`jywar.lua:20945` -- the per-person restore moved out of the branch above it
+`jywar.lua:20645`, `20667` -- the caster's effect saves the screen
+`jywar.lua:20963` -- the per-person restore moved out of the branch above it
 
 Using a skill left pieces of its effect stranded in mid-air. Two separate
 faults, found by tracing every `SaveSur`, `LoadSur` and effect blit through a
@@ -647,7 +669,7 @@ legible without them, so the `lib.LoadPNG(91, ...)` call and the
 surrounding `Cls()` / `ShowScreen()` stay, so the name now zooms in over
 black and the announcement is 600ms shorter.
 
-Slot 91 is registered at `jywar.lua:17308` as `CC.DzPath` with
+Slot 91 is registered at `jywar.lua:17314` as `CC.DzPath` with
 `CC.DzNum = 9`; `lib.LoadPNG` halves the id it is given, so the `91, 8`
 at the 绝世天罡 site was `DATA/dz/4.png`. Between them the twelve sites
 reached indices 0 through 7 -- `DATA/dz/8.png` was already dead art --
@@ -679,7 +701,7 @@ wiring up a scene.
 
 ## Debug aids for editing scenes and events
 
-`jyconst.lua:1798` -- `CC.DebugMenu`, `CC.DebugTomb`
+`jyconst.lua:1804` -- `CC.DebugMenu`, `CC.DebugTomb`
 `jymain.lua:1405` -- 传送 in the 系统 menu when `JY_DEBUG` is set
 `OEvent6001.lua:10897`, `11249` -- force the 无名古墓 event and its variant
 `MyOEvent.lua:359`, `391`, `445` -- a landing spot the scene can hold
