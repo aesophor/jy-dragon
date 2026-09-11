@@ -950,7 +950,46 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  	WAR.Person = {}
  
  	for iter_31_0 = 0, 30 do
-@@ -3808,7 +3808,7 @@
+@@ -2444,9 +2444,10 @@
+ 
+ 				WarDrawMap(0)
+ 				Cls()
+-				lib.LoadPNG(91, 10, 10, 10, 1)
++				-- [port] the 终极技 cut-in used to cover the screen with a
++				-- big DATA/dz/*.png character portrait for 600ms before the
++				-- talent name zoomed in; only the name is kept.
+ 				ShowScreen()
+-				lib.Delay(600)
+ 
+ 				for iter_32_7 = 1, 10 do
+ 					NewDrawString(-1, -1, ZJTF[6] .. TFSSJ[6], C_GOLD, CC.DefaultFont + iter_32_7 * 2)
+@@ -2495,9 +2496,10 @@
+ 
+ 				WarDrawMap(0)
+ 				Cls()
+-				lib.LoadPNG(91, 10, 10, 10, 1)
++				-- [port] the 终极技 cut-in used to cover the screen with a
++				-- big DATA/dz/*.png character portrait for 600ms before the
++				-- talent name zoomed in; only the name is kept.
+ 				ShowScreen()
+-				lib.Delay(600)
+ 
+ 				for iter_32_9 = 1, 10 do
+ 					NewDrawString(-1, -1, ZJTF[6] .. TFSSJ[6], C_GOLD, CC.DefaultFont + iter_32_9 * 2)
+@@ -2546,9 +2548,10 @@
+ 
+ 				WarDrawMap(0)
+ 				Cls()
+-				lib.LoadPNG(91, 10, 10, 10, 1)
++				-- [port] the 终极技 cut-in used to cover the screen with a
++				-- big DATA/dz/*.png character portrait for 600ms before the
++				-- talent name zoomed in; only the name is kept.
+ 				ShowScreen()
+-				lib.Delay(600)
+ 
+ 				for iter_32_11 = 1, 10 do
+ 					NewDrawString(-1, -1, ZJTF[6] .. TFSSJ[6], C_GOLD, CC.DefaultFont + iter_32_11 * 2)
+@@ -3808,7 +3811,7 @@
  				WAR.Person[arg_32_0].特效文字2 = WAR.Person[arg_32_0].特效文字2 .. "+" .. "借力消力"
  			end
  		else
@@ -959,7 +998,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  				WAR.fthurt = math.modf(var_32_49 * 0.1)
  			elseif JY.Person[var_32_1].主功体 == 97 then
  				WAR.fthurt = math.modf(var_32_49 * 0.2)
-@@ -6732,7 +6732,7 @@
+@@ -6732,7 +6735,7 @@
  		end
  	end
  
@@ -968,7 +1007,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  		local var_32_183 = {
  			102,
  			295,
-@@ -7522,17 +7522,45 @@
+@@ -7522,17 +7525,45 @@
  		end
  	until WAR.PersonNum > 0
  
@@ -1019,7 +1058,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  				0
  			}
  
-@@ -7543,17 +7571,17 @@
+@@ -7543,17 +7574,17 @@
  
  				local var_39_10 = JY.Person[var_39_9].姓名
  
@@ -1041,7 +1080,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  			" 结束",
  			nil,
  			1
-@@ -7566,12 +7594,12 @@
+@@ -7566,12 +7597,12 @@
  
  			DrawStrBox(var_39_11, 10, "请选择参战人物", C_WHITE, CC.DefaultFont)
  
@@ -1056,7 +1095,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  					WAR.Person[WAR.PersonNum].人物编号 = JY.Base["佣兵" .. iter_39_11]
  					WAR.Person[WAR.PersonNum].我方 = true
  					WAR.Person[WAR.PersonNum].坐标X = WAR.Data["我方X" .. iter_39_11] + 1
-@@ -8401,7 +8429,7 @@
+@@ -8401,7 +8432,7 @@
  			var_49_3 = var_49_3 + math.random(2)
  		end
  
@@ -1065,7 +1104,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  			var_49_3 = math.modf(var_49_3 - var_49_3 / 3)
  		end
  
-@@ -8446,7 +8474,7 @@
+@@ -8446,7 +8477,7 @@
  		var_49_6 = var_49_6 + 2
  	end
  
@@ -1074,7 +1113,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  		var_49_6 = 0
  	end
  
-@@ -8460,7 +8488,7 @@
+@@ -8460,7 +8491,7 @@
  
  	local var_49_7 = var_49_6 * var_49_1
  
@@ -1083,7 +1122,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  		local var_49_8 = math.random(var_49_7 + 1) - 1
  		local var_49_9 = limitX(math.random(var_49_7 + 1 - var_49_8) - 1, 0, var_49_7)
  		local var_49_10 = limitX(math.random(var_49_7 + 1 - var_49_8 - var_49_9) - 1, 0, var_49_7)
-@@ -8539,7 +8567,7 @@
+@@ -8539,7 +8570,7 @@
  	for iter_51_0 = 0, WAR.PersonNum - 1 do
  		local var_51_0 = WAR.Person[iter_51_0].人物编号
  
@@ -1092,7 +1131,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  			JY.Person[var_51_0].生命 = JY.Person[var_51_0].生命最大值
  			JY.Person[var_51_0].内力 = JY.Person[var_51_0].内力最大值
  			JY.Person[var_51_0].体力 = CC.PersonAttribMax.体力
-@@ -8648,7 +8676,7 @@
+@@ -8648,7 +8679,7 @@
  		for iter_51_4 = 0, WAR.PersonNum - 1 do
  			local var_51_5 = WAR.Person[iter_51_4].人物编号
  
@@ -1101,7 +1140,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  				if var_51_5 == 0 then
  					local var_51_6 = true
  				end
-@@ -8681,7 +8709,7 @@
+@@ -8681,7 +8712,7 @@
  	for iter_51_7 = 0, WAR.PersonNum - 1 do
  		local var_51_8 = WAR.Person[iter_51_7].人物编号
  
@@ -1110,7 +1149,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  			AddPersonAttrib(var_51_8, "经验", math.modf(WAR.Person[iter_51_7].经验))
  			DrawStrBoxWaitKey(string.format("%s 获得经验点数 %d", JY.Person[var_51_8].姓名, WAR.Person[iter_51_7].经验), C_WHITE, CC.DefaultFont)
  			War_AddPersonLVUP(var_51_8)
-@@ -11177,7 +11205,7 @@
+@@ -11177,7 +11208,7 @@
  			WAR.WS = 1
  		end
  
@@ -1119,7 +1158,98 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  			WAR.WS = 1
  		end
  
-@@ -12981,7 +13009,7 @@
+@@ -12440,9 +12471,10 @@
+ 			WAR.WS = 1
+ 
+ 			Cls()
+-			lib.LoadPNG(91, 2, 10, 10, 1)
++			-- [port] the 终极技 cut-in used to cover the screen with a
++			-- big DATA/dz/*.png character portrait for 600ms before the
++			-- talent name zoomed in; only the name is kept.
+ 			ShowScreen()
+-			lib.Delay(600)
+ 
+ 			for iter_54_87 = 1, 10 do
+ 				NewDrawString(-1, -1, ZJTF[2] .. TFSSJ[2], C_GOLD, CC.DefaultFont + iter_54_87 * 2)
+@@ -12483,9 +12515,10 @@
+ 			WAR.WS = 1
+ 
+ 			Cls()
+-			lib.LoadPNG(91, 2, 10, 10, 1)
++			-- [port] the 终极技 cut-in used to cover the screen with a
++			-- big DATA/dz/*.png character portrait for 600ms before the
++			-- talent name zoomed in; only the name is kept.
+ 			ShowScreen()
+-			lib.Delay(600)
+ 
+ 			for iter_54_89 = 1, 10 do
+ 				NewDrawString(-1, -1, ZJTF[9] .. TFSSJ[9], C_GOLD, CC.DefaultFont + iter_54_89 * 2)
+@@ -12528,9 +12561,10 @@
+ 			WAR.WS = 1
+ 
+ 			Cls()
+-			lib.LoadPNG(91, 5, 10, 10, 1)
++			-- [port] the 终极技 cut-in used to cover the screen with a
++			-- big DATA/dz/*.png character portrait for 600ms before the
++			-- talent name zoomed in; only the name is kept.
+ 			ShowScreen()
+-			lib.Delay(600)
+ 
+ 			for iter_54_91 = 1, 10 do
+ 				NewDrawString(-1, -1, ZJTF[8] .. TFSSJ[8], C_GOLD, CC.DefaultFont + iter_54_91 * 2)
+@@ -12562,9 +12596,10 @@
+ 			WAR.WS = 1
+ 
+ 			Cls()
+-			lib.LoadPNG(91, 0, 10, 10, 1)
++			-- [port] the 终极技 cut-in used to cover the screen with a
++			-- big DATA/dz/*.png character portrait for 600ms before the
++			-- talent name zoomed in; only the name is kept.
+ 			ShowScreen()
+-			lib.Delay(600)
+ 
+ 			for iter_54_92 = 1, 10 do
+ 				NewDrawString(-1, -1, ZJTF[1] .. TFSSJ[1], C_GOLD, CC.DefaultFont + iter_54_92 * 2)
+@@ -12596,9 +12631,10 @@
+ 			WAR.WS = 1
+ 
+ 			Cls()
+-			lib.LoadPNG(91, 6, 100, 10, 1)
++			-- [port] the 终极技 cut-in used to cover the screen with a
++			-- big DATA/dz/*.png character portrait for 600ms before the
++			-- talent name zoomed in; only the name is kept.
+ 			ShowScreen()
+-			lib.Delay(600)
+ 
+ 			for iter_54_93 = 1, 10 do
+ 				NewDrawString(-1, -1, ZJTF[4] .. TFSSJ[4], C_GOLD, CC.DefaultFont + iter_54_93 * 2)
+@@ -12630,9 +12666,10 @@
+ 			WAR.WS = 1
+ 
+ 			Cls()
+-			lib.LoadPNG(91, 4, 10, 10, 1)
++			-- [port] the 终极技 cut-in used to cover the screen with a
++			-- big DATA/dz/*.png character portrait for 600ms before the
++			-- talent name zoomed in; only the name is kept.
+ 			ShowScreen()
+-			lib.Delay(600)
+ 
+ 			for iter_54_94 = 1, 10 do
+ 				NewDrawString(-1, -1, ZJTF[3] .. TFSSJ[3], C_GOLD, CC.DefaultFont + iter_54_94 * 2)
+@@ -12662,9 +12699,10 @@
+ 
+ 			if var_54_83 > 0 then
+ 				Cls()
+-				lib.LoadPNG(91, 8, 10, 10, 1)
++				-- [port] the 终极技 cut-in used to cover the screen with a
++				-- big DATA/dz/*.png character portrait for 600ms before the
++				-- talent name zoomed in; only the name is kept.
+ 				ShowScreen()
+-				lib.Delay(600)
+ 
+ 				for iter_54_96 = 1, 10 do
+ 					NewDrawString(-1, -1, ZJTF[5] .. TFSSJ[5], C_GOLD, CC.DefaultFont + iter_54_96 * 2)
+@@ -12981,7 +13019,7 @@
  			var_54_99 = JY.Thing[var_54_98].练出武功
  		end
  
@@ -1128,7 +1258,20 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  			if JY.Person[var_54_0]["武功等级" .. arg_54_1] < 900 then
  				if JY.Person[var_54_0]["武功" .. arg_54_1] == var_54_99 then
  					if JY.Wugong[var_54_99].武功等级 >= 10 then
-@@ -16101,7 +16129,7 @@
+@@ -13402,9 +13440,10 @@
+ 				CurIDTXDH(iter_54_119, 81, 0)
+ 				CurIDTXDH(iter_54_119, 79, 0)
+ 				Cls()
+-				lib.LoadPNG(91, 14, 10, 10, 1)
++				-- [port] the 终极技 cut-in used to cover the screen with a
++				-- big DATA/dz/*.png character portrait for 600ms before the
++				-- talent name zoomed in; only the name is kept.
+ 				ShowScreen()
+-				lib.Delay(600)
+ 
+ 				for iter_54_120 = 12, 24 do
+ 					NewDrawString(-1, -1, "云体风身反攻", C_GOLD, 25 + iter_54_120)
+@@ -16101,7 +16140,7 @@
  				WAR.Person[iter_72_0].TimeAdd = WAR.Person[iter_72_0].TimeAdd + 10
  			end
  
@@ -1137,7 +1280,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  				WAR.Person[iter_72_0].TimeAdd = WAR.Person[iter_72_0].TimeAdd + 5
  
  				if cxtd(var_72_4, 590) then
-@@ -16117,7 +16145,7 @@
+@@ -16117,7 +16156,7 @@
  				end
  			end
  
@@ -1146,7 +1289,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  				WAR.Person[iter_72_0].TimeAdd = WAR.Person[iter_72_0].TimeAdd + 3
  
  				if cxtd(var_72_4, 590) then
-@@ -16155,7 +16183,7 @@
+@@ -16155,7 +16194,7 @@
  				end
  			end
  
@@ -1155,7 +1298,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  				if JY.Base.游戏难度 == 1 then
  					WAR.Person[iter_72_0].TimeAdd = math.modf(WAR.Person[iter_72_0].TimeAdd * 0.8)
  				elseif JY.Base.游戏难度 == 2 then
-@@ -17056,7 +17084,7 @@
+@@ -17056,7 +17095,7 @@
  				local var_76_36, var_76_37 = var_76_35(var_76_7[iter_76_30][1], var_76_7[iter_76_30][2], var_76_0, var_76_1)
  
  				if GetWarMap(var_76_7[iter_76_30][1], var_76_7[iter_76_30][2], 2) ~= nil and GetWarMap(var_76_7[iter_76_30][1], var_76_7[iter_76_30][2], 2) >= 0 and GetWarMap(var_76_7[iter_76_30][1], var_76_7[iter_76_30][2], 2) ~= WAR.CurID then
@@ -1164,7 +1307,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  						local var_76_38 = WAR.Person[WAR.CurID].坐标X
  						local var_76_39 = WAR.Person[WAR.CurID].坐标Y
  						local var_76_40 = var_76_7[iter_76_30][1] - var_76_38
-@@ -17182,6 +17210,17 @@
+@@ -17182,6 +17221,17 @@
  		return false
  	end
  
@@ -1182,7 +1325,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  	CleanMemory()
  	lib.PicInit()
  	lib.ShowSlow(20, 1)
-@@ -17628,7 +17667,7 @@
+@@ -17628,7 +17678,7 @@
  	for iter_78_26 = 0, WAR.PersonNum - 1 do
  		local var_78_18 = WAR.Person[iter_78_26].人物编号
  
@@ -1191,7 +1334,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  			if JY.Base.游戏难度 == 1 then
  				WAR.ZYZ[var_78_18] = 100
  			elseif JY.Base.游戏难度 == 2 then
-@@ -17642,7 +17681,7 @@
+@@ -17642,7 +17692,7 @@
  			end
  		end
  
@@ -1200,7 +1343,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  			WAR.ZYZ[var_78_18] = 100
  		end
  
-@@ -18172,7 +18211,7 @@
+@@ -18172,7 +18222,7 @@
  						end
  					end
  
@@ -1209,7 +1352,20 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  						for iter_78_36 = 0, WAR.PersonNum - 1 do
  							if WAR.Person[iter_78_36].人物编号 == 68 and WAR.Person[iter_78_36].死亡 == false then
  								WAR.ZYZ[var_78_25] = WAR.ZYZ[var_78_25] - 10
-@@ -20580,7 +20619,12 @@
+@@ -18647,9 +18697,10 @@
+ 							if WAR.HTSS == 0 and JY.Base.二次觉醒 == 1 and JLSD(25, 50 + var_78_73, 0) then
+ 								CurIDTXDH(WAR.CurID, 91, 0)
+ 								Cls()
+-								lib.LoadPNG(91, 12, 10, 10, 1)
++								-- [port] the 终极技 cut-in used to cover the screen with a
++								-- big DATA/dz/*.png character portrait for 600ms before the
++								-- talent name zoomed in; only the name is kept.
+ 								ShowScreen()
+-								lib.Delay(600)
+ 
+ 								for iter_78_50 = 12, 24 do
+ 									NewDrawString(-1, -1, ZJTF[7] .. TFSSJ[7], C_GOLD, 25 + iter_78_50)
+@@ -20580,7 +20631,12 @@
  			if iter_122_6 == 1 and WAR.Person[WAR.CurID].特效动画 ~= -1 then
  				local var_122_32 = WAR.Person[WAR.CurID].特效动画
  				local var_122_33 = 0
@@ -1223,7 +1379,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  
  				for iter_122_7 = 1, CC.Effect[var_122_32] do
  					lib.PicLoadCache(WAR.EFT[var_122_32], (var_122_33 + iter_122_7) * 2, CC.ScreenW / 2, CC.ScreenH / 2 - var_122_22, 2, 192)
-@@ -20599,11 +20643,10 @@
+@@ -20599,11 +20655,10 @@
  
  					ShowScreen()
  
@@ -1238,7 +1394,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  				end
  
  				lib.FreeSur(var_122_34)
-@@ -20890,13 +20933,16 @@
+@@ -20890,13 +20945,16 @@
  
  		if var_122_64 then
  			lib.ShowSurface(0)
@@ -1258,7 +1414,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  	end
  
  	lib.FreeSur(var_122_63)
-@@ -22493,7 +22539,7 @@
+@@ -22493,7 +22551,7 @@
  		arg_134_0 = arg_134_0 + 40
  	end
  
@@ -1267,7 +1423,7 @@ diff -ru --label pristine --label ported ../_re/script_source_utf8/jywar.lua gam
  		for iter_134_2 = 1, #TeamP do
  			if TeamP[iter_134_2] == arg_134_1 then
  				local var_134_1 = math.modf(JY.Person[arg_134_1].实战 / 25 + 1)
-@@ -22629,7 +22675,7 @@
+@@ -22629,7 +22687,7 @@
  	local var_139_3 = 0
  	local var_139_4 = 0
  

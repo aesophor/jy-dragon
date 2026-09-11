@@ -633,6 +633,27 @@ restores, all at `0,0`. No partial save or restore is left in any effect path,
 and the effects still animate -- `eft/66` drew 230 frames at x=610, six other
 archives at their own positions.
 
+## The 终极技 cut-in covered the screen with a character portrait
+
+`jywar.lua` -- twelve sites: `2447`, `2499`, `2551`, `12474`, `12518`,
+`12564`, `12599`, `12634`, `12669`, `12702`, `13443`, `18700`
+
+When a 终极技 fires the game announces it by zooming the talent name in gold
+across a blank screen. Before that it spent 600ms showing one of the nine
+`DATA/dz/*.png` character portraits behind the name. The portraits are
+fan art in a style that matches nothing else in the game, and the name is
+legible without them, so the `lib.LoadPNG(91, ...)` call and the
+`lib.Delay(600)` that followed it are gone at all twelve sites. The
+surrounding `Cls()` / `ShowScreen()` stay, so the name now zooms in over
+black and the announcement is 600ms shorter.
+
+Slot 91 is registered at `jywar.lua:17308` as `CC.DzPath` with
+`CC.DzNum = 9`; `lib.LoadPNG` halves the id it is given, so the `91, 8`
+at the 绝世天罡 site was `DATA/dz/4.png`. Between them the twelve sites
+reached indices 0 through 7 -- `DATA/dz/8.png` was already dead art --
+and nothing else in the scripts touches slot 91, so the whole directory
+is unreferenced now. It stays on disk; it ships with the mod.
+
 ## Debug aids for editing scenes and events
 
 `jyconst.lua:1798` -- `CC.DebugMenu`, `CC.DebugTomb`

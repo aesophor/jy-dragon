@@ -2444,9 +2444,10 @@ function War_WugongHurtLife(arg_32_0, arg_32_1, arg_32_2, arg_32_3, arg_32_4, ar
 
 				WarDrawMap(0)
 				Cls()
-				lib.LoadPNG(91, 10, 10, 10, 1)
+				-- [port] the 终极技 cut-in used to cover the screen with a
+				-- big DATA/dz/*.png character portrait for 600ms before the
+				-- talent name zoomed in; only the name is kept.
 				ShowScreen()
-				lib.Delay(600)
 
 				for iter_32_7 = 1, 10 do
 					NewDrawString(-1, -1, ZJTF[6] .. TFSSJ[6], C_GOLD, CC.DefaultFont + iter_32_7 * 2)
@@ -2495,9 +2496,10 @@ function War_WugongHurtLife(arg_32_0, arg_32_1, arg_32_2, arg_32_3, arg_32_4, ar
 
 				WarDrawMap(0)
 				Cls()
-				lib.LoadPNG(91, 10, 10, 10, 1)
+				-- [port] the 终极技 cut-in used to cover the screen with a
+				-- big DATA/dz/*.png character portrait for 600ms before the
+				-- talent name zoomed in; only the name is kept.
 				ShowScreen()
-				lib.Delay(600)
 
 				for iter_32_9 = 1, 10 do
 					NewDrawString(-1, -1, ZJTF[6] .. TFSSJ[6], C_GOLD, CC.DefaultFont + iter_32_9 * 2)
@@ -2546,9 +2548,10 @@ function War_WugongHurtLife(arg_32_0, arg_32_1, arg_32_2, arg_32_3, arg_32_4, ar
 
 				WarDrawMap(0)
 				Cls()
-				lib.LoadPNG(91, 10, 10, 10, 1)
+				-- [port] the 终极技 cut-in used to cover the screen with a
+				-- big DATA/dz/*.png character portrait for 600ms before the
+				-- talent name zoomed in; only the name is kept.
 				ShowScreen()
-				lib.Delay(600)
 
 				for iter_32_11 = 1, 10 do
 					NewDrawString(-1, -1, ZJTF[6] .. TFSSJ[6], C_GOLD, CC.DefaultFont + iter_32_11 * 2)
@@ -12468,9 +12471,10 @@ function War_Fight_Sub(arg_54_0, arg_54_1, arg_54_2, arg_54_3)
 			WAR.WS = 1
 
 			Cls()
-			lib.LoadPNG(91, 2, 10, 10, 1)
+			-- [port] the 终极技 cut-in used to cover the screen with a
+			-- big DATA/dz/*.png character portrait for 600ms before the
+			-- talent name zoomed in; only the name is kept.
 			ShowScreen()
-			lib.Delay(600)
 
 			for iter_54_87 = 1, 10 do
 				NewDrawString(-1, -1, ZJTF[2] .. TFSSJ[2], C_GOLD, CC.DefaultFont + iter_54_87 * 2)
@@ -12511,9 +12515,10 @@ function War_Fight_Sub(arg_54_0, arg_54_1, arg_54_2, arg_54_3)
 			WAR.WS = 1
 
 			Cls()
-			lib.LoadPNG(91, 2, 10, 10, 1)
+			-- [port] the 终极技 cut-in used to cover the screen with a
+			-- big DATA/dz/*.png character portrait for 600ms before the
+			-- talent name zoomed in; only the name is kept.
 			ShowScreen()
-			lib.Delay(600)
 
 			for iter_54_89 = 1, 10 do
 				NewDrawString(-1, -1, ZJTF[9] .. TFSSJ[9], C_GOLD, CC.DefaultFont + iter_54_89 * 2)
@@ -12556,9 +12561,10 @@ function War_Fight_Sub(arg_54_0, arg_54_1, arg_54_2, arg_54_3)
 			WAR.WS = 1
 
 			Cls()
-			lib.LoadPNG(91, 5, 10, 10, 1)
+			-- [port] the 终极技 cut-in used to cover the screen with a
+			-- big DATA/dz/*.png character portrait for 600ms before the
+			-- talent name zoomed in; only the name is kept.
 			ShowScreen()
-			lib.Delay(600)
 
 			for iter_54_91 = 1, 10 do
 				NewDrawString(-1, -1, ZJTF[8] .. TFSSJ[8], C_GOLD, CC.DefaultFont + iter_54_91 * 2)
@@ -12590,9 +12596,10 @@ function War_Fight_Sub(arg_54_0, arg_54_1, arg_54_2, arg_54_3)
 			WAR.WS = 1
 
 			Cls()
-			lib.LoadPNG(91, 0, 10, 10, 1)
+			-- [port] the 终极技 cut-in used to cover the screen with a
+			-- big DATA/dz/*.png character portrait for 600ms before the
+			-- talent name zoomed in; only the name is kept.
 			ShowScreen()
-			lib.Delay(600)
 
 			for iter_54_92 = 1, 10 do
 				NewDrawString(-1, -1, ZJTF[1] .. TFSSJ[1], C_GOLD, CC.DefaultFont + iter_54_92 * 2)
@@ -12624,9 +12631,10 @@ function War_Fight_Sub(arg_54_0, arg_54_1, arg_54_2, arg_54_3)
 			WAR.WS = 1
 
 			Cls()
-			lib.LoadPNG(91, 6, 100, 10, 1)
+			-- [port] the 终极技 cut-in used to cover the screen with a
+			-- big DATA/dz/*.png character portrait for 600ms before the
+			-- talent name zoomed in; only the name is kept.
 			ShowScreen()
-			lib.Delay(600)
 
 			for iter_54_93 = 1, 10 do
 				NewDrawString(-1, -1, ZJTF[4] .. TFSSJ[4], C_GOLD, CC.DefaultFont + iter_54_93 * 2)
@@ -12658,9 +12666,10 @@ function War_Fight_Sub(arg_54_0, arg_54_1, arg_54_2, arg_54_3)
 			WAR.WS = 1
 
 			Cls()
-			lib.LoadPNG(91, 4, 10, 10, 1)
+			-- [port] the 终极技 cut-in used to cover the screen with a
+			-- big DATA/dz/*.png character portrait for 600ms before the
+			-- talent name zoomed in; only the name is kept.
 			ShowScreen()
-			lib.Delay(600)
 
 			for iter_54_94 = 1, 10 do
 				NewDrawString(-1, -1, ZJTF[3] .. TFSSJ[3], C_GOLD, CC.DefaultFont + iter_54_94 * 2)
@@ -12690,9 +12699,10 @@ function War_Fight_Sub(arg_54_0, arg_54_1, arg_54_2, arg_54_3)
 
 			if var_54_83 > 0 then
 				Cls()
-				lib.LoadPNG(91, 8, 10, 10, 1)
+				-- [port] the 终极技 cut-in used to cover the screen with a
+				-- big DATA/dz/*.png character portrait for 600ms before the
+				-- talent name zoomed in; only the name is kept.
 				ShowScreen()
-				lib.Delay(600)
 
 				for iter_54_96 = 1, 10 do
 					NewDrawString(-1, -1, ZJTF[5] .. TFSSJ[5], C_GOLD, CC.DefaultFont + iter_54_96 * 2)
@@ -13430,9 +13440,10 @@ function War_Fight_Sub(arg_54_0, arg_54_1, arg_54_2, arg_54_3)
 				CurIDTXDH(iter_54_119, 81, 0)
 				CurIDTXDH(iter_54_119, 79, 0)
 				Cls()
-				lib.LoadPNG(91, 14, 10, 10, 1)
+				-- [port] the 终极技 cut-in used to cover the screen with a
+				-- big DATA/dz/*.png character portrait for 600ms before the
+				-- talent name zoomed in; only the name is kept.
 				ShowScreen()
-				lib.Delay(600)
 
 				for iter_54_120 = 12, 24 do
 					NewDrawString(-1, -1, "云体风身反攻", C_GOLD, 25 + iter_54_120)
@@ -18686,9 +18697,10 @@ function WarMain(arg_78_0, arg_78_1, arg_78_2, arg_78_3)
 							if WAR.HTSS == 0 and JY.Base.二次觉醒 == 1 and JLSD(25, 50 + var_78_73, 0) then
 								CurIDTXDH(WAR.CurID, 91, 0)
 								Cls()
-								lib.LoadPNG(91, 12, 10, 10, 1)
+								-- [port] the 终极技 cut-in used to cover the screen with a
+								-- big DATA/dz/*.png character portrait for 600ms before the
+								-- talent name zoomed in; only the name is kept.
 								ShowScreen()
-								lib.Delay(600)
 
 								for iter_78_50 = 12, 24 do
 									NewDrawString(-1, -1, ZJTF[7] .. TFSSJ[7], C_GOLD, 25 + iter_78_50)
