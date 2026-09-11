@@ -122,12 +122,36 @@ static uint16_t s2t(uint16_t cp) {
 #define CP_ER 0x5152   /* 兒, as in 沖兒 */
 #define CP_GE 0x54E5   /* 哥, as in 沖哥 */
 
+/* 于 is the same shape of problem coming the other way. It is a Traditional
+ * character in its own right -- the compound surname 鮮于, and 于 alone --
+ * but it is also the Simplified form of 於, and the table maps it there.
+ * That is right for 終於, 於是, 至於, 屬於 and the other 275 prepositional
+ * uses in the scripts, and wrong for the two people the game names with it.
+ *
+ * lib.CharSet(s, 0) folds Big5 于 and 於 onto one GBK codepoint before the
+ * string ever reaches here, so Big5-sourced text is no safer than a script
+ * literal: person 109 in Ranger.grp is Big5 鮮于通 and still arrives as 于.
+ * Neighbours are the only thing left to key on.
+ */
+#define CP_XIAN 0x9BAE /* 鮮, as in 鮮于通 */
+#define CP_YUAN 0x65BC /* 於, what the table produced */
+#define CP_YU 0x4E8E   /* 于, wanted for the two names */
+#define CP_REN 0x4EBA  /* 人, as in 于人豪 */
+#define CP_HAO 0x8C6A  /* 豪, as in 于人豪 */
+
 static void fix_merged(uint16_t *s, int n) {
     for (int i = 0; i < n; i++) {
-        if (s[i] != CP_CHNG) continue;
-        bool name = (i >= 1 && s[i - 1] == CP_HU) ||
-                    (i + 1 < n && (s[i + 1] == CP_ER || s[i + 1] == CP_GE));
-        if (name) s[i] = CP_CHON;
+        if (s[i] == CP_CHNG) {
+            bool name = (i >= 1 && s[i - 1] == CP_HU) ||
+                        (i + 1 < n && (s[i + 1] == CP_ER || s[i + 1] == CP_GE));
+            if (name) s[i] = CP_CHON;
+        } else if (s[i] == CP_YUAN) {
+            /* 鮮于通, and 于人豪 -- 於人 alone is not enough, 不齒於人 and
+             * 絕響於人間 are both in the text. */
+            bool name = (i >= 1 && s[i - 1] == CP_XIAN) ||
+                        (i + 2 < n && s[i + 1] == CP_REN && s[i + 2] == CP_HAO);
+            if (name) s[i] = CP_YU;
+        }
     }
 }
 

@@ -263,10 +263,18 @@ int main(int argc, char **argv) {
             "\xCC\xEC\xB8\xB3 \xCE\xDE \xD6\xDA \xB7\xA2 "
             "\xBF\xAA\xCA\xBC\xD0\xC2\xD3\xCE\xCF\xB7 \xD5\xBD\xB6\xB7\xCA\xA4\xC0\xFB'\n"
             "lib.SetClip(0, 0, 0, 0)\n"
-            "lib.FillColor(0, 0, CC.ScreenW, 160, 0x101820)\n"
+            "lib.FillColor(0, 0, CC.ScreenW, 210, 0x101820)\n"
             "lib.DrawStr(40, 40, sample, 0xECECEC, 44, CC.FontName, 0, 0)\n"
             "lib.DrawStr(40, 100, sample, 0x80D0FF, 28, CC.FontName, 0, 0)\n"
             "lib.Debug('sample is '..#sample..' bytes -- unchanged by conversion')\n"
+            /* The second line is the fix_merged exceptions: the two names the
+             * table gets wrong in each direction, each followed by a phrase
+             * the rule must NOT touch. Expected: 鮮于通 于人豪 令狐沖
+             * 不齒於人 終於 由於人類. */
+            "local names = '\xCF\xCA\xD3\xDA\xCD\xA8 \xD3\xDA\xC8\xCB\xBA\xC0 "
+            "\xC1\xEE\xBA\xFC\xB3\xE5 \xB2\xBB\xB3\xDD\xD3\xDA\xC8\xCB "
+            "\xD6\xD5\xD3\xDA \xD3\xC9\xD3\xDA\xC8\xCB\xC0\xE0'\n"
+            "lib.DrawStr(40, 150, names, 0xFFD080, 36, CC.FontName, 0, 0)\n"
             "SNAP('trad')\n";
         if (luaL_loadstring(L, T) || lua_pcall(L, 0, 0, 0))
             jy_log("trad test failed: %s", lua_tostring(L, -1));

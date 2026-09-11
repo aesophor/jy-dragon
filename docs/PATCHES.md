@@ -603,6 +603,41 @@ calls with no neighbour to match on. That literal spells 沖 directly; it is
 unmapped by the table, so it passes through untouched. (The other wrapped
 occurrence, 令*狐冲, leaves 狐冲 contiguous and the rule catches it.)
 
+### 鮮于通 and 于人豪 rendered 於
+
+`src/text.c` -- the same `fix_merged`, second rule
+`src/main.c` -- `JY_TEST_TRAD` now renders the exceptions too
+
+The merge runs the other way here. 于 is a Traditional character in its own
+right -- the compound surname 鮮于, and 于 alone -- but it is also the
+Simplified form of 於, and `s2t_table.h` maps it there. That is right for
+終於, 於是, 至於, 屬於 and the 394 other prepositional uses across the
+scripts and `talk.grp`, and wrong for the two people the game names with it:
+鮮于通 and 于人豪.
+
+Big5 provenance is no defence. `lib.CharSet(s, 0)` folds Big5 于 (`a45f`)
+and 於 (`a9f3`) onto one GBK codepoint on the way out of a data record, so by
+the time a string reaches `to_ucs2` the distinction is already gone.
+Person 109 in `Ranger.grp` is Big5 鮮于通 and still arrived as 鮮於通.
+
+The data is unambiguous about what is correct, which is why the rule can key
+on neighbours: 於 preceded by 鮮, or followed by 人豪. The second needs all
+three characters -- 於人 alone would catch 不齒於人 and 絕響於人間, both of
+which are in the text.
+
+Counted by running the table and the rule over every text source -- all 19
+scripts, plus `talk.grp` and `Ranger.grp` with 於 folded back to 于 the way
+`CharSet` leaves it: **398 occurrences, 4 flipped, 394 left as 於**. The four
+are 鮮于通 in `Ranger.grp` and `talk.grp`, and 于人豪 in `talk.grp` and
+`OEvent9001.lua:2433`. No false positive in either direction.
+
+Confirmed through the engine rather than a re-implementation of it.
+`JY_TEST_TRAD` drew only the table's own output before; it now also renders a
+line of the exceptions, each name followed by a phrase the rule must leave
+alone. `JY_TEST_TRAD=1 ./build/jyengine` from `game/` gives
+
+    鮮于通 于人豪 令狐沖 不齒於人 終於 由於人類
+
 ## Effect sprites left their tops behind
 
 `src/lib.c` -- `SaveSur` takes corners, not a size
